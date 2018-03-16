@@ -5,23 +5,23 @@ import sys
 import pandas as pd
 
 from DensenetModels import DenseNet3D
-from Trainer import Trainer
-from Tester import Tester
-from Inference import Inference
+from Trainer_Tester import Trainer
+# from Trainer_Tester import Tester
+# from Inference import Inference
 
-DRGradeTrainer = DRGradeTrainer()
-DRGradeTester  = DRGradeTester()
+Trainer = Trainer()
+# Tester  = Tester()
 
 nclasses = 2
 #-------------------------------------------------------------------------------- 
 
 def main (nnClassCount=nclasses):
-	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(nnClassCount, nnIsTrained)}]
+	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(depth = 3, num_classes = nnClassCount)}]
 
 	for nnArchitecture in nnArchitectureList:
 		runTrain(nnArchitecture=nnArchitecture)
   
- def getDataPaths(path, mode):
+def getDataPaths(path, mode):
  	data = pd.read_csv(path)
  	imgpaths = data[data[mode]]['Volume Path'].as_matrix()
  	imglabels = data[data[mode]]['Labels'].as_matrix()

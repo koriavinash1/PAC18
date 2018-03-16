@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-
+from DataAugment import DataAugment
 from PIL import Image
 import os
 import os.path
@@ -11,6 +11,11 @@ IMG_EXTENSIONS = [
 	'.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP', '.npy', '.hdf5'
 ]
 
+ALLOWED_TRANSFORMS = [
+	'Resize', 'RandomResizedCrop', 'HorizontalFlip', 'RandomFlip', 'Sequence'
+]
+
+#----------------------------------------------------------------------------------------------------------------------------
 
 def is_image_file(filename):
 	return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
@@ -57,7 +62,7 @@ def numpy_loader(path):
 	return x
 
 # TODO:
-def getDataFromPath(path):
+def hdf5_loader(path):
 	h5 = h5py.File(path,'r')
 	img = h5['volume'][:]
 	print img.shape
@@ -107,6 +112,12 @@ class DatasetGenerator(Dataset):
 		self.transform = transform
 		self.loader = loader
 
+		for key in self.transform:
+			if key not in ALLOWED_TRANSFORMS:
+				raise ValueError('Unknown Transformed Included, \
+					Allowed Transformations are: {}'.format(ALLOWED_TRANSFORMS))
+
+
 		# sanity check...
 		# self.listImagePaths = self.listImagePaths[:5]
 		# self.listImageLabels = self.listImageLabels[:5]
@@ -120,13 +131,23 @@ class DatasetGenerator(Dataset):
 			tuple: (image, target) where target is class_index of the target class.
 		"""
 		imagePath = self.listImagePaths[index]
-		
-		imageData = self.loader(imagePath)
+		numpy_image = self.loader(imagePath)
+
+		try:
+			resize = self.transform['Resize']
+			numpy_image = DataAugment.Resize(numpy_image, resize)
+		except:
+			pass
+		try:
+			random_resize = self.transform['RandomResizedCrop']
+			numpy_image = DataAugment.RrandomCrop(numpy_image, random_resize)
+		except:
+			pass
+
+		imageData = torch.from_numpy(numpy_image)
 		imageLabel= torch.FloatTensor(self.listImageLabels[index])
 		
 		# print imagePath, np.array(imageData).shape
-		# print 
-		if self.transform != None: imageData = self.transform(imageData)
 		
 		return imageData, imageLabel, imagePath
 

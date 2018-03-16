@@ -7,17 +7,15 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torchvision
-import DataAugments as transforms
 import torch.optim as optim
 import torch.nn.functional as tfunc
-from DataLoader import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as func
 
 from sklearn.metrics.ranking import roc_auc_score
 
 from DensenetModels import DenseNet3D
-from DatasetGenerator import DatasetGenerator
+from DataGenerator import DatasetGenerator
 
 import torchnet as tnt
 import pandas as pd
@@ -55,15 +53,14 @@ class Trainer ():
 				
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
-		transformList = []
-		transformList.append(transforms.Resize(transResize))
-		transformList.append(transforms.RandomResizedCrop(transCrop))
-		transformList.append(transforms.ToTensor())
-		transformSequence=transforms.Compose(transformList)
+		transformList = {}
+		transformList['Resize'] = transResize
+		transformList['RandomResizedCrop'] = transCrop
+		transformList['Sequence'] = True
 
 		#-------------------- SETTINGS: DATASET BUILDERS
-		datasetTrain = DatasetGenerator(imgs = TrainVolPaths, classes = TrainLabels, transform=transformSequence)
-		datasetVal =   DatasetGenerator(imgs =ValidVolPaths, classes = ValidLabels, transform=transformSequence)
+		datasetTrain = DatasetGenerator(imgs = TrainVolPaths, classes = TrainLabels, transform=transformList)
+		datasetVal =   DatasetGenerator(imgs =ValidVolPaths, classes = ValidLabels, transform=transformList)
 			  
 		dataLoaderTrain = DataLoader(dataset=datasetTrain, batch_size=trBatchSize, shuffle=True,  num_workers=8, pin_memory=False)
 		dataLoaderVal = DataLoader(dataset=datasetVal, batch_size=trBatchSize, shuffle=False, num_workers=8, pin_memory=False)
