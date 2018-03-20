@@ -1,9 +1,11 @@
 import torch
 from torch.utils.data import Dataset
 from DataAugment import DataAugment
+from torch.utils.data import DataLoader
 from PIL import Image
 import os
 import os.path
+import h5py
 import numpy as np 
 
 IMG_EXTENSIONS = [
@@ -12,9 +14,10 @@ IMG_EXTENSIONS = [
 ]
 
 ALLOWED_TRANSFORMS = [
-	'Resize', 'RandomResizedCrop', 'HorizontalFlip', 'RandomFlip', 'Sequence'
+	'Resize', 'RandomResizedCrop', 'HorizontalFlip', 'RandomFlip', 'TenCrop', 'FiveCrop', 'Sequence'
 ]
 
+augment = DataAugment()
 #----------------------------------------------------------------------------------------------------------------------------
 
 def is_image_file(filename):
@@ -65,7 +68,7 @@ def numpy_loader(path):
 def hdf5_loader(path):
 	h5 = h5py.File(path,'r')
 	img = h5['volume'][:]
-	print img.shape
+	# print img.shape
 	# add data augmentation....
 	# img, lbl, weight = getPatchSize(img, lbl,weight)
 	return img
@@ -111,7 +114,7 @@ class DatasetGenerator(Dataset):
 		self.listImageLabels = classes
 		self.transform = transform
 		self.loader = loader
-
+		print (self.transform)
 		for key in self.transform:
 			if key not in ALLOWED_TRANSFORMS:
 				raise ValueError('Unknown Transformed Included, \
@@ -119,8 +122,9 @@ class DatasetGenerator(Dataset):
 
 
 		# sanity check...
-		# self.listImagePaths = self.listImagePaths[:5]
-		# self.listImageLabels = self.listImageLabels[:5]
+		print (len(self.listImagePaths), len(self.listImageLabels))
+		# self.listImagePaths = self.listImagePaths[:15]
+		# self.listImageLabels = self.listImageLabels[:15]
 
 	def __getitem__(self, index):
 		"""
@@ -135,22 +139,50 @@ class DatasetGenerator(Dataset):
 
 		try:
 			resize = self.transform['Resize']
-			numpy_image = DataAugment.Resize(numpy_image, resize)
-		except:
-			pass
+			numpy_image = augment.Resize(numpy_image, resize)
+		except: pass
+
 		try:
 			random_resize = self.transform['RandomResizedCrop']
-			numpy_image = DataAugment.RrandomCrop(numpy_image, random_resize)
-		except:
-			pass
+			numpy_image = augment.RandomCrop(numpy_image, random_resize)
+		except: pass
 
-		imageData = torch.from_numpy(numpy_image)
-		imageLabel= torch.FloatTensor(self.listImageLabels[index])
+		try:
+			tencrop = self.transform['TenCrop']
+			numpy_image = augment.TenCrop(numpy_image, tencrop)
+		except: pass
+
+		if len(numpy_image.shape) == 3:
+			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
+		else: imageData = torch.from_numpy(np.expand_dims(numpy_image, 1))
+
+		imageLabel= torch.FloatTensor([int(self.listImageLabels[index])])
 		
-		# print imagePath, np.array(imageData).shape
+		# print imageData.size()
+		# print imagePath, imageData.size(), imageLabel 
 		
 		return imageData, imageLabel, imagePath
 
 	def __len__(self):
 
 		return len(self.listImagePaths)
+
+"""
+if __name__ == '__main__':
+	transformList = {}
+	transformList['Resize'] = imgtransResize
+
+	# any one of these TenCrop and FiveCrop should be True......
+	transformList['TenCrop'] = True
+	transformList['TenCropSize'] = imgtransCrop
+
+	transformList['Sequence'] = True
+	
+	datasetTest = DatasetGenerator(pathImageDirectory=pathTestData, transform=transformList)
+	dataLoaderTest = DataLoader(dataset=datasetTest, batch_size=1, num_workers=8, shuffle=False, pin_memory=False)
+	for batchID, (input, target, _) in tqdm(enumerate (dataLoader)):
+		# print 		
+		target = target.cpu()
+		input = input.cpu()
+		print input.shape, target.shape
+"""

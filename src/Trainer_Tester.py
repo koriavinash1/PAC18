@@ -11,6 +11,7 @@ import torch.optim as optim
 import torch.nn.functional as tfunc
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as func
+from torch.utils.data import DataLoader
 
 from sklearn.metrics.ranking import roc_auc_score
 
@@ -54,8 +55,8 @@ class Trainer ():
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
 		transformList = {}
-		transformList['Resize'] = transResize
-		transformList['RandomResizedCrop'] = transCrop
+		transformList['Resize'] = imgtransResize
+		transformList['RandomResizedCrop'] = imgtransCrop
 		transformList['Sequence'] = True
 
 		#-------------------- SETTINGS: DATASET BUILDERS
@@ -112,7 +113,7 @@ class Trainer ():
 				archs.append(nnArchitecture['name'])
 				losses.append(lossMIN)
 				accs.append(acc)
-				model_name = '../../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + '.pth.tar'
+				model_name = '../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + '.pth.tar'
 
 				torch.save(model, model_name)
 				print ('Epoch [' + str(epochID + 1) + '] [save] [' + launchTimestamp + '] loss= ' + str(lossVal) + ' accuracy= ' + str(acc))
@@ -124,15 +125,15 @@ class Trainer ():
 		sub['loss'] = losses
 		sub['acc'] = accs
 
-		sub.to_csv('../../models/' + 'model' + nnArchitecture['name'] + '.csv', index=True)
+		sub.to_csv('../models/' + 'model' + nnArchitecture['name'] + '.csv', index=True)
 		
 					 
 	#-------------------------------------------------------------------------------- 
 
 	# compute accuracy
 	def accuracy(self, output, labels):
-		pred = torch.max(output, 1)[1]
-		label = torch.max(labels, 1)[1]
+		pred = torch.max(output, 1)[0]
+		label = torch.max(labels, 1)[0]
 		acc = torch.sum(pred == label)
 		return float(acc)
 	
@@ -142,12 +143,14 @@ class Trainer ():
 		
 		model.train()
 		for batchID, (input, target, _) in tqdm(enumerate (dataLoader)):
-						
-			target = target.cuda(async = True)
+			# print 		
+			target = target.cpu()
 			
-			varInput = torch.autograd.Variable(input.cuda())
-			varTarget = torch.autograd.Variable(target)         
+			varInput = torch.autograd.Variable(input.cpu())
+			varTarget = torch.autograd.Variable(target)        
 			varOutput = model(varInput)
+			# print varInput.size(), varOutput.size(), target.size()
+			# varOutput = torch.FloatTensor([0])
 
 			lossvalue = loss(varOutput, varTarget)	   
 			optimizer.zero_grad()
@@ -169,9 +172,9 @@ class Trainer ():
 		acc = 0.0
 		for i, (input, target, _) in enumerate (dataLoader):
 			
-			target = target.cuda(async=True)
+			target = target.cpu()
 				 
-			varInput = torch.autograd.Variable(input.cuda(), volatile=True)
+			varInput = torch.autograd.Variable(input.cpu(), volatile=True)
 			varTarget = torch.autograd.Variable(target, volatile=True)    
 			varOutput = model(varInput)
 			
@@ -188,3 +191,111 @@ class Trainer ():
 		losstensorMean = losstensorMean / lossValNorm
 		
 		return outLoss, losstensorMean, acc
+#-------------------------------------------------------------------------------- 
+
+class Tester():
+	#--------------------------------------------------------------------------------  
+	#---- Test the trained network 
+	#---- pathDirData - path to the directory that contains images
+	#---- pathFileTrain - path to the file that contains image paths and label pairs (training set)
+	#---- pathFileVal - path to the file that contains image path and label pairs (validation set)
+	#---- nnArchitecture - model architecture 'DENSE-NET-121', 'DENSE-NET-169' or 'DENSE-NET-201'
+	#---- nnIsTrained - if True, uses pre-trained version of the network (pre-trained on imagenet)
+	#---- nnClassCount - number of output classes 
+	#---- trBatchSize - batch size
+	#---- trMaxEpoch - number of epochs
+	#---- transResize - size of the image to scale down to (not used in current implementation)
+	#---- transCrop - size of the cropped image 
+	#---- launchTimestamp - date/time, used to assign unique name for the checkpoint file
+	#---- checkpoint - if not None loads the model and continues training
+
+	def get_best_model_path(self, path, expert = True):
+		data = pd.read_csv(path)
+		acc = np.squeeze(data['acc'].as_matrix())
+		timestamp = np.squeeze(data['timestamp'].as_matrix())
+		arch = np.squeeze(data['archs'].as_matrix())
+
+		index = np.where(acc == np.max(acc)) [0]
+		index = index[len(index) - 1]
+		try: 
+			name = timestamp[index] + "-" + arch[index]
+		except: 
+			name = timestamp + "-" + arch
+		path = '../models/expert-m-' + name + '.pth.tar'
+		return path
+	
+	def accuracy(self, output, labels):
+		acc = np.sum(output == labels)/len(labels)
+		return float(acc)
+
+	def test (self, TestVolPaths, TestLabels, pathsModel, nnClassCount, trBatchSize, transResize, transCrop, launchTimeStamp):
+
+		#-------------------- SETTINGS: DATA TRANSFORMS
+		
+		transformList = {}
+		transformList['Resize'] = transResize
+
+		# any one of these TenCrop and FiveCrop should be True......
+		transformList['TenCrop'] = transCrop
+
+		transformList['Sequence'] = True
+		
+		datasetTest = DatasetGenerator(imgs = TestVolPaths, classes = TestLabels, transform=transformList)
+		dataLoaderTest = DataLoader(dataset=datasetTest, batch_size=1, num_workers=8, shuffle=False, pin_memory=False)
+		
+		# results per image
+		outGTs = torch.FloatTensor().cpu()
+		outPREDs = [] 		
+		image_paths = []
+
+		
+		st = time.time() 
+		for i, (input, target, path) in enumerate(dataLoaderTest):
+			print (path)
+
+			target = target.cpu()
+			# print input.size()
+			bs, n_crops, c, h, w, l  = input.size()
+			varInput = torch.autograd.Variable(input.view(-1, c, h, w, l).cpu(), volatile=True)
+
+			max_model1 = []
+			for pathModel in pathsModel:
+				#best_model_path = self.get_best_model_path(pathModel, expert=False)
+				# print (best_model_path)
+				best_model_path = '../models/model-m-19032018-070346-densenet3D.pth.tar'
+				model = torch.load(best_model_path)
+				#print best_model_path
+				model.eval()			
+				out = model(varInput)
+				_,class_associated_to_each_crop = torch.max(out,1)
+				del _
+
+				class_associated_to_each_crop = class_associated_to_each_crop.data.cpu().numpy() ### numpify
+				count_for_all_classes = np.bincount(class_associated_to_each_crop)
+				del class_associated_to_each_crop
+				class_associated_to_image = np.argmax(count_for_all_classes)
+				del count_for_all_classes
+
+				max_model1.append(class_associated_to_image)
+				############
+
+			max_primary_output = np.bincount(np.array(max_model1))
+			final_output = np.argmax(max_primary_output)
+			
+			outGTs = torch.cat((outGTs, target), 0)
+			outPREDs.append(final_output)
+			image_paths.append(path)
+
+		outGTs = torch.max(outGTs, 1)[0]
+		outGTs = outGTs.cpu().numpy()
+
+		# per image csv....
+		sub = pd.DataFrame()
+		sub['path'] = image_paths
+		sub['actual'] = outGTs
+		sub['predicted'] = outPREDs
+		
+		sub.to_csv('../logs/Testing.csv', index=True)
+		print ("Final Accuracy: {}".format(self.accuracy(outPREDs, outGTs)))
+	
+#-------------------------------------------------------------------------------- 

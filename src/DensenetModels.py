@@ -44,6 +44,7 @@ class TransitionBlock(nn.Module):
 		super(TransitionBlock, self).__init__()
 		self.bn1 = nn.BatchNorm3d(in_planes)
 		self.relu = nn.ReLU(inplace=True)
+		# print in_planes, out_planes
 		self.conv1 = nn.Conv3d(in_planes, out_planes, kernel_size=1, stride=1,
 							   padding=0, bias=False)
 		self.droprate = dropRate
@@ -69,16 +70,18 @@ class DenseNet3D(nn.Module):
 	def __init__(self, depth, num_classes, growth_rate=2,
 				 reduction=0.5, bottleneck=True, dropRate=0.0):
 		super(DenseNet3D, self).__init__()
+
 		in_planes = 2 * growth_rate
-		n = (depth - 4) / 3
+		n = (depth) / 3
 		if bottleneck == True:
 			n = n/2
 			block = BottleneckBlock
 		else:
 			block = BasicBlock
 		n = int(n)
+
 		# 1st conv before any dense block
-		self.conv1 = nn.Conv3d(3, in_planes, kernel_size=3, stride=1,
+		self.conv1 = nn.Conv3d(1, in_planes, kernel_size=3, stride=1,
 							   padding=1, bias=False)
 		# 1st block
 		self.block1 = DenseBlock(n, in_planes, growth_rate, block, dropRate)
@@ -99,20 +102,13 @@ class DenseNet3D(nn.Module):
 		# global average pooling and classifier
 		# self.bn1 = nn.BatchNorm3d(in_planes)
 		self.relu = nn.ReLU(inplace=True)
-		self.fc = nn.Linear(in_planes, num_classes)
+
+		self.fc = nn.Linear(32, 1)
 		self.in_planes = in_planes
 
-		self.sigmoid = nn.sigmoid(inplace=True)
+		self.sigmoid = nn.Sigmoid()
 
-		# for m in self.modules():
-		# 	if isinstance(m, nn.Conv2d):
-		# 		n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-		# 		m.weight.data.normal_(0, math.sqrt(2. / n))
-		# 	elif isinstance(m, nn.BatchNorm2d):
-		# 		m.weight.data.fill_(1)
-		# 		m.bias.data.zero_()
-		# 	elif isinstance(m, nn.Linear):
-		# 		m.bias.data.zero_()
+
 	def forward(self, x):
 		out = self.conv1(x)
 		out = self.trans1(self.block1(out))
@@ -120,6 +116,6 @@ class DenseNet3D(nn.Module):
 		out = self.block3(out)
 		# out = self.relu(self.bn1(out))
 		out = F.avg_pool3d(out, 8)
-		out = out.view(-1, self.in_planes)
+		out = out.view(out.size(0), -1)
 		out = self.fc(out)
 		return self.sigmoid(out)

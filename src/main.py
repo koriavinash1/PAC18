@@ -6,17 +6,22 @@ import pandas as pd
 
 from DensenetModels import DenseNet3D
 from Trainer_Tester import Trainer
-# from Trainer_Tester import Tester
+
+import torch
+from torch.autograd import Variable
+from Trainer_Tester import Tester
 # from Inference import Inference
 
 Trainer = Trainer()
-# Tester  = Tester()
+Tester  = Tester()
 
-nclasses = 2
+nclasses = 1
+data = DenseNet3D(6, 2)
+
 #-------------------------------------------------------------------------------- 
 
 def main (nnClassCount=nclasses):
-	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(depth = 3, num_classes = nnClassCount)}]
+	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(depth = 6, num_classes = nnClassCount)}]
 
 	for nnArchitecture in nnArchitectureList:
 		runTrain(nnArchitecture=nnArchitecture)
@@ -24,7 +29,8 @@ def main (nnClassCount=nclasses):
 def getDataPaths(path, mode):
  	data = pd.read_csv(path)
  	imgpaths = data[data[mode]]['Volume Path'].as_matrix()
- 	imglabels = data[data[mode]]['Labels'].as_matrix()
+ 	imglabels = data[data[mode]]['Labels'].as_matrix() - 1.0
+ 	# print imglabels
  	return imgpaths, imglabels
 
 #--------------------------------------------------------------------------------   
@@ -37,7 +43,7 @@ def runTrain(nnArchitecture = None):
 	
 	Path = '../processed_data/train_test_split.csv'
 	#---- Path to the directory with images
-	TrainVolPaths, TrainLabels = getDataPaths(Path, 'Train')
+	TrainVolPaths, TrainLabels = getDataPaths(Path, 'Training')
 	ValidVolPaths, ValidLabels = getDataPaths(Path, 'Validation')
 
 	nnClassCount = nclasses
@@ -60,7 +66,7 @@ def runTrain(nnArchitecture = None):
 def runTest():
 	
 	Path = '../processed_data/train_test_split.csv'
-	TestVolPaths, TestLabels = getDataPaths(Path, 'Train')
+	TestVolPaths, TestLabels = getDataPaths(Path, 'Testing')
 	nnClassCount = nclasses
 
 	trBatchSize = 2

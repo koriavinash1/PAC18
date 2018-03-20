@@ -3,7 +3,9 @@ import numpy as np
 import torch
 import SimpleITK as sitk
 import torch.nn as nn
+import h5py
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 class DataAugment(object):
 	#----  Consists all data_augmentation fucnitons
@@ -11,22 +13,29 @@ class DataAugment(object):
 	def Resize(self, volume, out_size): 
 		# out_size: int, function adjust's aspect ratio
 		l, w, h = volume.shape
+		l, w, h = float(l), float(w), float(h)
+
 		if h < l and h < w: 
-			Ah= out_size
-			if I < w: Al = Ah/h * l
-			else : Aw = Ah/h * Al/l * w
+			Ah = out_size
+			Aw = (Ah/h) * w
+			Al = (Ah/h) * l
 
 		elif l < w:  
 			Al = out_size
-			if h < w: Ah = Al/l * h
-			else : Aw = Ah/h * Al/l * w
+			Aw = (Al/l) * w
+			Ah = (Al/l)  * h
 
 		else : 
 			Aw = out_size
-			if h < I: Ah = Aw/w * l
-			else : Al = Aw/w * Ah/h * l
+			Al = (Aw/w) * l
+			Ah = (Aw/w) * h
+		
 
-		Al, Aw, Ah = int(Ai), int(Aw), int(Ah)
+		# Al, Aw = out_size, out_size
+		# Ah = Al * h/l
+
+		Al, Aw, Ah = int(Al), int(Aw), int(Ah)
+		# print l,w,h, Al, Aw, Ah
 		resized_volume = self.resize_sitk_3D(volume, 
 					outputSize= (Al, Aw, Ah))
 
@@ -68,6 +77,9 @@ class DataAugment(object):
 		resampled_arr = sitk.GetArrayFromImage(image)
 		return resampled_arr
 
+	def Crop(self, volume, x,y,z, size):
+		return volume[x:x+size, y:y+size, z:z+size]
+
 	def RandomCrop(self, volume, size):
 		"""
 		Args: 
@@ -75,11 +87,39 @@ class DataAugment(object):
 			size: int for cubical volume output
 			TODO: cuboidal output
 		Return:
-			volume: numpy object
+			volume of specified size: numpy object
 		"""
 		l, w, h = volume.shape
 		x = np.random.randint(0, l-size)
 		y = np.random.randint(0, w-size)
 		z = np.random.randint(0, h-size)
+		img = self.Crop(volume, x, y, z, size)
 
-		return volume[x:x+size, y:y+size, z:z+size]
+		return img
+
+	def TenCrop(self, volume, size):
+		"""
+		Args: 
+			volume: numpy object
+			size: int for cubical volume output
+			TODO: cuboidal output
+		Return:
+			Ten volumes of specified size: numpy object
+		"""
+		x, y, z  = volume.shape
+		volumes = []
+		# front five...
+		volumes.append(self.Crop(volume, 0, y-size, z-size, size))
+		volumes.append(self.Crop(volume, 0, y-size, 0, size))
+		volumes.append(self.Crop(volume, x-size, y-size, 0, size))
+		volumes.append(self.Crop(volume, x-size, y-size, z-size, size))
+		volumes.append(self.Crop(volume, (x-size)//2, y-size, (z-size)//2, size))
+
+		# back five...
+		volumes.append(self.Crop(volume, 0, 0, 0, size))
+		volumes.append(self.Crop(volume, 0, 0, z-size, size))
+		volumes.append(self.Crop(volume, x-size, 0, z-size, size))
+		volumes.append(self.Crop(volume, x-size, 0, 0, size))
+		volumes.append(self.Crop(volume, (x-size)//2, 0, (z-size)//2, size))
+
+		return np.array(volumes)
