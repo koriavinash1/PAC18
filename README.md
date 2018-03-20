@@ -32,7 +32,7 @@ sMRI based depression classification
 
 + DataGenerator : Contains function to load data batch wise..
 
-+DensenetModel : Contains 3D Densenet model.....
++ DensenetModel : Contains 3D Densenet model.....
 
 + Trainer_Tester : Contains train and test class with all train and test strategy
 
