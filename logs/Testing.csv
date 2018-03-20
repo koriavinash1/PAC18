@@ -1,0 +1,16 @@
+,path,actual,predicted
+0,"('../processed_data/hdf5_file/PAC2018_0091.hdf5',)",1.0,0
+1,"('../processed_data/hdf5_file/PAC2018_1876.hdf5',)",0.0,0
+2,"('../processed_data/hdf5_file/PAC2018_1698.hdf5',)",0.0,0
+3,"('../processed_data/hdf5_file/PAC2018_1512.hdf5',)",0.0,0
+4,"('../processed_data/hdf5_file/PAC2018_0679.hdf5',)",0.0,0
+5,"('../processed_data/hdf5_file/PAC2018_2066.hdf5',)",0.0,0
+6,"('../processed_data/hdf5_file/PAC2018_0209.hdf5',)",1.0,0
+7,"('../processed_data/hdf5_file/PAC2018_0977.hdf5',)",1.0,0
+8,"('../processed_data/hdf5_file/PAC2018_1321.hdf5',)",1.0,0
+9,"('../processed_data/hdf5_file/PAC2018_1259.hdf5',)",0.0,0
+10,"('../processed_data/hdf5_file/PAC2018_1406.hdf5',)",0.0,0
+11,"('../processed_data/hdf5_file/PAC2018_0743.hdf5',)",1.0,0
+12,"('../processed_data/hdf5_file/PAC2018_1836.hdf5',)",0.0,0
+13,"('../processed_data/hdf5_file/PAC2018_0062.hdf5',)",1.0,0
+14,"('../processed_data/hdf5_file/PAC2018_0696.hdf5',)",1.0,0

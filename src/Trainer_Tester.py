@@ -260,18 +260,19 @@ class Tester():
 
 			max_model1 = []
 			for pathModel in pathsModel:
-				#best_model_path = self.get_best_model_path(pathModel, expert=False)
-				# print (best_model_path)
+				# best_model_path = self.get_best_model_path(pathModel, expert=False)
 				best_model_path = '../models/model-m-19032018-070346-densenet3D.pth.tar'
 				model = torch.load(best_model_path)
-				#print best_model_path
+
 				model.eval()			
 				out = model(varInput)
+
 				_,class_associated_to_each_crop = torch.max(out,1)
 				del _
 
 				class_associated_to_each_crop = class_associated_to_each_crop.data.cpu().numpy() ### numpify
 				count_for_all_classes = np.bincount(class_associated_to_each_crop)
+				
 				del class_associated_to_each_crop
 				class_associated_to_image = np.argmax(count_for_all_classes)
 				del count_for_all_classes
