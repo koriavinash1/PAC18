@@ -103,10 +103,10 @@ class DenseNet3D(nn.Module):
 		# self.bn1 = nn.BatchNorm3d(in_planes)
 		self.relu = nn.ReLU(inplace=True)
 
-		self.fc = nn.Linear(32, 1)
+		self.fc = nn.Linear(32, num_classes)
 		self.in_planes = in_planes
 
-		self.sigmoid = nn.Sigmoid()
+		self.softmax = nn.Softmax()
 
 
 	def forward(self, x):
@@ -118,4 +118,4 @@ class DenseNet3D(nn.Module):
 		out = F.avg_pool3d(out, 8)
 		out = out.view(out.size(0), -1)
 		out = self.fc(out)
-		return self.sigmoid(out)
+		return self.softmax(out)

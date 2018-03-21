@@ -68,7 +68,7 @@ class Trainer ():
 		
 		# print len(dataLoaderTrain), len(datasetTrain)
 		#-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-		optimizer = optim.Adam (model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
+		optimizer = optim.Adam (model.parameters(), lr=0.01, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
 		scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
 				
 		#-------------------- SETTINGS: LOSS
@@ -132,8 +132,10 @@ class Trainer ():
 
 	# compute accuracy
 	def accuracy(self, output, labels):
-		pred = torch.max(output, 1)[0]
-		label = torch.max(labels, 1)[0]
+		
+		pred = torch.max(output, 1)[1]
+		label = torch.max(labels, 1)[1]
+		# print pred, label, output, labels
 		acc = torch.sum(pred == label)
 		return float(acc)
 	
@@ -151,7 +153,6 @@ class Trainer ():
 			varOutput = model(varInput)
 			# print varInput.size(), varOutput.size(), target.size()
 			# varOutput = torch.FloatTensor([0])
-
 			lossvalue = loss(varOutput, varTarget)	   
 			optimizer.zero_grad()
 			lossvalue.backward()
@@ -221,12 +222,13 @@ class Tester():
 			name = timestamp[index] + "-" + arch[index]
 		except: 
 			name = timestamp + "-" + arch
-		path = '../models/expert-m-' + name + '.pth.tar'
+		path = '../models/model-m-' + name + '.pth.tar'
 		return path
 	
 	def accuracy(self, output, labels):
-		acc = np.sum(output == labels)/len(labels)
-		return float(acc)
+		print output, labels
+		acc = float(np.sum(output == labels))/len(labels)
+		return acc
 
 	def test (self, TestVolPaths, TestLabels, pathsModel, nnClassCount, trBatchSize, transResize, transCrop, launchTimeStamp):
 
@@ -260,8 +262,9 @@ class Tester():
 
 			max_model1 = []
 			for pathModel in pathsModel:
-				# best_model_path = self.get_best_model_path(pathModel, expert=False)
-				best_model_path = '../models/model-m-19032018-070346-densenet3D.pth.tar'
+				best_model_path = self.get_best_model_path(pathModel, expert=False)
+
+				# best_model_path = '../models/model-m-21032018-041540-densenet3D.pth.tar'
 				model = torch.load(best_model_path)
 
 				model.eval()			
@@ -282,12 +285,13 @@ class Tester():
 
 			max_primary_output = np.bincount(np.array(max_model1))
 			final_output = np.argmax(max_primary_output)
-			
+			# print max_model1, final_output
+
 			outGTs = torch.cat((outGTs, target), 0)
 			outPREDs.append(final_output)
 			image_paths.append(path)
 
-		outGTs = torch.max(outGTs, 1)[0]
+		outGTs = torch.max(outGTs, 1)[1]
 		outGTs = outGTs.cpu().numpy()
 
 		# per image csv....

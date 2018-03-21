@@ -15,7 +15,7 @@ from Trainer_Tester import Tester
 Trainer = Trainer()
 Tester  = Tester()
 
-nclasses = 1
+nclasses = 2
 data = DenseNet3D(6, 2)
 
 #-------------------------------------------------------------------------------- 
@@ -50,7 +50,7 @@ def runTrain(nnArchitecture = None):
 	
 	#---- Training settings: batch size, maximum number of epochs
 	trBatchSize = 2
-	trMaxEpoch = 50
+	trMaxEpoch = 30
 	
 	#---- Parameters related to image transforms: size of the down-scaled image, cropped image
 	imgtransResize = 82
@@ -73,7 +73,7 @@ def runTest():
 	imgtransResize = 82
 	imgtransCrop = 64
 	
-	pathsModel = ['../../models/densenet3D.csv']
+	pathsModel = ['../models/modeldensenet3D.csv']
 	
 	timestampLaunch = ''
 
@@ -83,5 +83,5 @@ def runTest():
 #-------------------------------------------------------------------------------- 
 
 if __name__ == '__main__':	
-	main()
-	# runTest()
+	# main()
+	runTest()

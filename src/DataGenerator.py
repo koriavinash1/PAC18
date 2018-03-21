@@ -89,6 +89,12 @@ def default_loader(path):
 	else:
 		return pil_loader(path)
 
+#-------------------------------------------------------------------------------- 
+def one_hot(val, nclasses):
+	a = np.zeros(nclasses)
+	a[int(val)] = 1
+	return a
+
 
 class DatasetGenerator(Dataset):
 	"""A generic data loader where the images are arranged in this way: ::
@@ -123,8 +129,8 @@ class DatasetGenerator(Dataset):
 
 		# sanity check...
 		print (len(self.listImagePaths), len(self.listImageLabels))
-		# self.listImagePaths = self.listImagePaths[:15]
-		# self.listImageLabels = self.listImageLabels[:15]
+		self.listImagePaths = self.listImagePaths[:15]
+		self.listImageLabels = self.listImageLabels[:15]
 
 	def __getitem__(self, index):
 		"""
@@ -156,7 +162,7 @@ class DatasetGenerator(Dataset):
 			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
 		else: imageData = torch.from_numpy(np.expand_dims(numpy_image, 1))
 
-		imageLabel= torch.FloatTensor([int(self.listImageLabels[index])])
+		imageLabel= torch.FloatTensor(one_hot(self.listImageLabels[index], nclasses=2))
 		
 		# print imageData.size()
 		# print imagePath, imageData.size(), imageLabel 
