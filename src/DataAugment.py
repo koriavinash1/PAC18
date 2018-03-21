@@ -123,3 +123,31 @@ class DataAugment(object):
 		volumes.append(self.Crop(volume, (x-size)//2, 0, (z-size)//2, size))
 
 		return np.array(volumes)
+
+	def MinMaxNormalization(self, volume):
+		"""
+		Args:
+			volume: numpy object
+		return:
+			volume of same size as input: numpy object
+
+		Converts the range of intensity values between 0-1.0
+		"""
+		volume = (volume - np.min(volume)) / (np.max(volume) - np.min(volume))
+		return volume
+
+	def ZScore(self, volume):
+
+		"""
+		Args:
+			volume: numpy object
+		return:
+			volume of same size as input: numpy object
+
+		Converts the statistics of image intensity values : mean=0, std=1.0
+		"""
+		volume = (volume - np.mean(volume)) / np.std(volume)
+		return volume
+
+	def HistogramEquilization(self, volume):
+		return volume

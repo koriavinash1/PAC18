@@ -55,6 +55,7 @@ class Trainer ():
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
 		transformList = {}
+		transformList['MinMax'] = True
 		transformList['Resize'] = imgtransResize
 		transformList['RandomResizedCrop'] = imgtransCrop
 		transformList['Sequence'] = True
@@ -68,7 +69,7 @@ class Trainer ():
 		
 		# print len(dataLoaderTrain), len(datasetTrain)
 		#-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-		optimizer = optim.Adam (model.parameters(), lr=0.01, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
+		optimizer = optim.Adam (model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-05, weight_decay=1e-5)
 		scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
 				
 		#-------------------- SETTINGS: LOSS
@@ -77,9 +78,7 @@ class Trainer ():
 		
 		#---- Load checkpoint 
 		if checkpoint != None:
-			modelCheckpoint = torch.load(checkpoint)
-			model.load_state_dict(modelCheckpoint['state_dict'])
-			optimizer.load_state_dict(modelCheckpoint['optimizer'])
+			model = torch.load(checkpoint)
 
 		
 		#---- TRAIN THE NETWORK

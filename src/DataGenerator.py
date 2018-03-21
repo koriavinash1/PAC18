@@ -14,7 +14,8 @@ IMG_EXTENSIONS = [
 ]
 
 ALLOWED_TRANSFORMS = [
-	'Resize', 'RandomResizedCrop', 'HorizontalFlip', 'RandomFlip', 'TenCrop', 'FiveCrop', 'Sequence'
+	'Resize', 'RandomResizedCrop', 'HorizontalFlip', 'RandomFlip', 'TenCrop',\
+	 'FiveCrop', 'MinMax', 'ZScore', 'HistogramEquilization', 'Sequence'
 ]
 
 augment = DataAugment()
@@ -129,8 +130,8 @@ class DatasetGenerator(Dataset):
 
 		# sanity check...
 		print (len(self.listImagePaths), len(self.listImageLabels))
-		self.listImagePaths = self.listImagePaths[:15]
-		self.listImageLabels = self.listImageLabels[:15]
+		self.listImagePaths = self.listImagePaths[:500]
+		self.listImageLabels = self.listImageLabels[:500]
 
 	def __getitem__(self, index):
 		"""
@@ -142,6 +143,17 @@ class DatasetGenerator(Dataset):
 		"""
 		imagePath = self.listImagePaths[index]
 		numpy_image = self.loader(imagePath)
+
+		# Augmentation parameteres.....
+		try:
+			minmax = self.transform['MinMax']
+			numpy_image = augment.MinMaxNormalization(numpy_image)
+		except: pass
+
+		try:
+			resize = self.transform['Resize']
+			numpy_image = augment.Resize(numpy_image, resize)
+		except: pass
 
 		try:
 			resize = self.transform['Resize']
@@ -158,6 +170,9 @@ class DatasetGenerator(Dataset):
 			numpy_image = augment.TenCrop(numpy_image, tencrop)
 		except: pass
 
+
+
+
 		if len(numpy_image.shape) == 3:
 			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
 		else: imageData = torch.from_numpy(np.expand_dims(numpy_image, 1))
@@ -172,6 +187,10 @@ class DatasetGenerator(Dataset):
 	def __len__(self):
 
 		return len(self.listImagePaths)
+
+
+
+
 
 """
 if __name__ == '__main__':
