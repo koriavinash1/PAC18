@@ -45,6 +45,6 @@ sMRI based depression classification
 
 <hr>
 
-If any comments or information required, pull requests/issues are **Welcomed....**
+If any comments or issues, pull requests/issues are **Welcomed....**
 
 Thankyou
