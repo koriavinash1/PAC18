@@ -5,7 +5,7 @@ import SimpleITK as sitk
 import torch.nn as nn
 import h5py
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 class DataAugment(object):
 	#----  Consists all data_augmentation fucnitons

@@ -69,7 +69,7 @@ class Trainer ():
 		
 		# print len(dataLoaderTrain), len(datasetTrain)
 		#-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-		optimizer = optim.Adam (model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-05, weight_decay=1e-5)
+		optimizer = optim.Adam (model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-05, weight_decay=1e-5)
 		scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
 				
 		#-------------------- SETTINGS: LOSS
@@ -180,7 +180,7 @@ class Trainer ():
 			
 			acc += self.accuracy(varOutput, varTarget)/ (len(dataLoader)*trBatchSize)
 			losstensor = loss(varOutput, varTarget)
-
+			print varOutput, varTarget
 			losstensorMean += losstensor
 			# confusion_meter.add(varOutput.view(-1), varTarget.data.view(-1))
 			lossVal += losstensor.data[0]
@@ -234,6 +234,7 @@ class Tester():
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
 		transformList = {}
+		transformList['MinMax'] = True
 		transformList['Resize'] = transResize
 
 		# any one of these TenCrop and FiveCrop should be True......
@@ -261,9 +262,9 @@ class Tester():
 
 			max_model1 = []
 			for pathModel in pathsModel:
-				best_model_path = self.get_best_model_path(pathModel, expert=False)
+				# best_model_path = self.get_best_model_path(pathModel, expert=False)
 
-				# best_model_path = '../models/model-m-21032018-041540-densenet3D.pth.tar'
+				best_model_path = '../models/model-m-21032018-225258-densenet3D.pth.tar'
 				model = torch.load(best_model_path)
 
 				model.eval()			

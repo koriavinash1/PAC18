@@ -16,12 +16,12 @@ Trainer = Trainer()
 Tester  = Tester()
 
 nclasses = 2
-data = DenseNet3D(6, 2)
+data = DenseNet3D(2)
 
 #-------------------------------------------------------------------------------- 
 
 def main (nnClassCount=nclasses):
-	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(depth = 6, num_classes = nnClassCount)}]
+	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(num_classes = nnClassCount)}]
 
 	for nnArchitecture in nnArchitectureList:
 		runTrain(nnArchitecture=nnArchitecture)

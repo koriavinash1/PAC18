@@ -69,10 +69,15 @@ def numpy_loader(path):
 def hdf5_loader(path):
 	h5 = h5py.File(path,'r')
 	img = h5['volume'][:]
+	# age = h5['age'][:]
+	# gender = h5['gender'][:]
+	# tiv = h5['tiv'][:]
+	age, gender, tiv = 0, 0, 0
+	
 	# print img.shape
 	# add data augmentation....
 	# img, lbl, weight = getPatchSize(img, lbl,weight)
-	return img
+	return img, age, gender, tiv
 
 def accimage_loader(path):
 	import accimage
@@ -130,8 +135,8 @@ class DatasetGenerator(Dataset):
 
 		# sanity check...
 		print (len(self.listImagePaths), len(self.listImageLabels))
-		self.listImagePaths = self.listImagePaths[:500]
-		self.listImageLabels = self.listImageLabels[:500]
+		self.listImagePaths = self.listImagePaths[:50]
+		self.listImageLabels = self.listImageLabels[:50]
 
 	def __getitem__(self, index):
 		"""
@@ -142,7 +147,7 @@ class DatasetGenerator(Dataset):
 			tuple: (image, target) where target is class_index of the target class.
 		"""
 		imagePath = self.listImagePaths[index]
-		numpy_image = self.loader(imagePath)
+		numpy_image = self.loader(imagePath)[0]
 
 		# Augmentation parameteres.....
 		try:
@@ -164,14 +169,11 @@ class DatasetGenerator(Dataset):
 			random_resize = self.transform['RandomResizedCrop']
 			numpy_image = augment.RandomCrop(numpy_image, random_resize)
 		except: pass
-
+		
 		try:
 			tencrop = self.transform['TenCrop']
 			numpy_image = augment.TenCrop(numpy_image, tencrop)
 		except: pass
-
-
-
 
 		if len(numpy_image.shape) == 3:
 			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
