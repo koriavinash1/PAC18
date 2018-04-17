@@ -12,7 +12,7 @@ class DataSetNPY(object):
             phenotypeBaseString,
             labelBaseString,
             imageBatchDims,
-            labelBatchDims=(-1,1),
+            labelBatchDims=(-1,2),
             batchSize=4,
             maxItemsInQueue=50,
             shuffle=True,
@@ -42,7 +42,7 @@ class DataSetNPY(object):
         self.labelBatchOperation = tf.reshape(
                                     tf.py_func(self._loadLabels, [dequeueOp], tf.float32),
                                     self.labelBatchDims)
-
+        print self.labelBatchOperation
         self.augment = augment
         if self.augment != 'none':
             self.CreateAugmentOperations(augmentation=augment)
@@ -154,14 +154,15 @@ class DataSetNPY(object):
         return volumes
 
     def _loadLabels(self, x):
-
         labels = []
         for name in x:
             # path = os.path.join(self.labelBaseString, name)
             path = name
             h5 = h5py.File(path, 'r')
-            labels.append(h5['label'][:].astype(np.float32))
-        labels = np.array(labels)
+            label = np.eye(2, dtype=np.float32)[int(h5['label'][:] -1)]
+            labels.append(label)
+        labels = np.array(labels, dtype=np.float32)
+        # print labels.shape, labels.dtype
         return labels
 
 if __name__ == '__main__':

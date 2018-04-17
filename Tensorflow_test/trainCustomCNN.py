@@ -67,14 +67,14 @@ def DefineDataOpts(summaryName='test_comp'):
     GlobalOpts.numberValdItems  = len(GlobalOpts.valdFiles)
     GlobalOpts.poolType = 'MAX'
 
-    GlobalOpts.name = '{} Scale: {}  Batch: {}  Rate: {}'.format(GlobalOpts.type, GlobalOpts.scale, GlobalOpts.batchSize, GlobalOpts.learningRate)
+    GlobalOpts.name = '{} Scale: {}  Batch: {}  Rate: {}  '.format(GlobalOpts.type, GlobalOpts.scale, GlobalOpts.batchSize, GlobalOpts.learningRate)
    
     if GlobalOpts.padding is not None:
-        GlobalOpts.name = '{}Padding{}'.format(GlobalOpts.name, GlobalOpts.padding)
+        GlobalOpts.name = '{}Padding:  {}'.format(GlobalOpts.name, GlobalOpts.padding)
     if GlobalOpts.maxNorm is not None:
-        GlobalOpts.name = '{}MaxNorm{}'.format(GlobalOpts.name, GlobalOpts.maxNorm)
+        GlobalOpts.name = '{}MaxNorm:  {}'.format(GlobalOpts.name, GlobalOpts.maxNorm)
     if GlobalOpts.dropout is not None:
-        GlobalOpts.name = '{}Dropout{}'.format(GlobalOpts.name, GlobalOpts.dropout)
+        GlobalOpts.name = '{}Dropout:  {}'.format(GlobalOpts.name, GlobalOpts.dropout)
 
     GlobalOpts.summaryDir = '../summaries/{}/{}/'.format(summaryName,
                                                      GlobalOpts.name)
@@ -85,17 +85,19 @@ def DefineDataOpts(summaryName='test_comp'):
 def GetOps(labelsPL, outputLayer, learningRate=0.0001):
     with tf.variable_scope('LossOperations'):
         print labelsPL, outputLayer
+        correct_predictions = tf.equal(tf.argmax(labelsPL,1), tf.argmax(outputLayer,1))
+        accOp = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
         lossOp = tf.losses.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MSEOp, MSEUpdateOp = tf.metrics.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MAEOp, MAEUpdateOp = tf.metrics.mean_absolute_error(labels=labelsPL, predictions=outputLayer)
         updateOp, gradients = GetTrainingOperation(lossOp, learningRate)
-
+        print accOp
     printOps = PrintOps(ops=[MSEOp, MAEOp],
         updateOps=[MSEUpdateOp, MAEUpdateOp],
         names=['loss', 'MAE'],
         gradients=gradients)
 
-    return lossOp, printOps, updateOp
+    return accOp, lossOp, printOps, updateOp
 
 def GetArgs():
     additionalArgs = [
@@ -210,7 +212,7 @@ def compareCustomCNN(validate=False):
     elif GlobalOpts.type == 'reverse':
         convLayers = [64, 32, 16, 8]
 
-    fullyConnectedLayers = [256, 1]
+    fullyConnectedLayers = [256, 2]
     if GlobalOpts.pheno:
         phenotypicBaseStrings=[
             'gender',
@@ -235,7 +237,8 @@ def compareCustomCNN(validate=False):
                             # align=GlobalOpts.align,
                             # padding=GlobalOpts.padding,
                             phenotypicsPL=phenotypicsPL)
-    lossOp, printOps, updateOp = GetOps(labelsPL, outputLayer, learningRate=GlobalOpts.learningRate)
+
+    accuracyOp, lossOp, printOps, updateOp = GetOps(labelsPL, outputLayer, learningRate=GlobalOpts.learningRate)
     modelTrainer.DefineNewParams(GlobalOpts.summaryDir,
                                 GlobalOpts.checkpointDir,
                                 imagesPL,

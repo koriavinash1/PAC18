@@ -13,7 +13,7 @@ def TimecoursePlaceholders():
     Returns input and output placeholders for the timecourses in the /data directory.
     """
     timecoursePL = tf.placeholder(tf.float32, shape=(None, get('DATA.TIMECOURSES.SEQ_LENGTH'), get('DATA.TIMECOURSES.SEQ_WIDTH')), name='timecoursePL')
-    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,1), name='labelsPL')
+    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,2), name='labelsPL')
     return (timecoursePL, labelsPL)
 
 def StructuralPlaceholders(imageShape):
@@ -23,7 +23,7 @@ def StructuralPlaceholders(imageShape):
     imageShape = list(imageShape)
     imageShape = [None if x == -1 else x for x in imageShape]
     imagesPL = tf.placeholder(dtype=tf.float32, shape=imageShape, name='imagesPL')
-    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,1), name='labelsPL')
+    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,2), name='labelsPL')
     return (imagesPL, labelsPL)
 
 
@@ -32,7 +32,7 @@ def SlicePlaceholders():
     Returns input and output placeholders for the slice images in the /data directory.
     """
     slicesPL = tf.placeholder(dtype=tf.float32, shape=(None, get('DATA.SLICES.DIMENSION'), get('DATA.SLICES.DIMENSION'), 1), name='slicesPL')
-    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,1), name='labelsPL')
+    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,2), name='labelsPL')
     return (slicesPL, labelsPL)
 
 def MatrixPlaceholders():
@@ -40,7 +40,7 @@ def MatrixPlaceholders():
     Returns input and output placeholders for the connectivity matrices in the data file.
     """
     matricesPL = tf.placeholder(dtype=tf.float32, shape=(None, get('DATA.MATRICES.DIMENSION'), get('DATA.MATRICES.DIMENSION'), 1), name='matricesPL')
-    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,1), name='labelsPL')
+    labelsPL = tf.placeholder(dtype=tf.float32, shape=(None,2), name='labelsPL')
     return (matricesPL, labelsPL)
 
 def AdamOptimizer(loss, learningRate, clipGrads=False):

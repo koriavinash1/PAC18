@@ -172,6 +172,8 @@ class ModelTrainer(object):
 
         for batchIndex in range(self.numberOfSteps):
             batchTrainFeedDict = self.GetFeedDict(sess)
+            # print "#"*50
+            # print batchTrainFeedDict
 
             if batchIndex % self.batchStepsBetweenSummary != 0:
                 _, _ = sess.run([updateOp, extraUpdateOps], feed_dict=batchTrainFeedDict)
