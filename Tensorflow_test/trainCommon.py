@@ -6,7 +6,6 @@ import os
 import re
 from sklearn.model_selection import train_test_split, KFold
 from utils import saveModel
-from utils.config import get
 from shared_placeholders import *
 from datetime import datetime
 from utils.args import *
@@ -151,7 +150,7 @@ class ModelTrainer(object):
         Saves the model to path every stepSize steps
         """
         saver.save(sess, path)
-        print('STEP {}: saved model to path {}'.format(step, path), end='\r')
+        print('STEP {}: saved model to path {}'.format(step, path))
 
     def TrainModel(self, sess, updateOp, printOps, name):
         writer = tf.summary.FileWriter('{}{}/'.format(self.summaryDir, name))
@@ -167,7 +166,7 @@ class ModelTrainer(object):
         if not os.path.exists(savePath):
             os.makedirs(savePath)
 
-        bestValidationLoss = math.inf
+        bestValidationLoss = 10000000
         bestValdOpDict = {}
         bestLossStepIndex = 0
 

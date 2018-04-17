@@ -29,6 +29,7 @@ class DataSetNPY(object):
         self.phenotypeBaseString = phenotypeBaseString
         self.phenotypeBatchOperation = None
 
+        # print filenames, maxItemsInQueue, shuffle
         stringQueue = tf.train.string_input_producer(filenames, shuffle=shuffle, capacity=maxItemsInQueue)
         dequeueOp = stringQueue.dequeue_many(batchSize)
         self.dequeueOp = dequeueOp
@@ -53,7 +54,10 @@ class DataSetNPY(object):
             else:
                 return sess.run([self.imageBatchOperation, self.labelBatchOperation])
         else:
-            return sess.run([self.augmentedImageOperation, self.labelBatchOperation])
+            if self.phenotypeBatchOperation is not None:
+                return sess.run([self.augmentedImageOperation, self.labelBatchOperation, self.phenotypeBatchOperation])
+            else:
+                return sess.run([self.augmentedImageOperation, self.labelBatchOperation])
 
     def GetBatchOperations(self):
         return self.imageBatchOperation, self.labelBatchOperation
@@ -121,11 +125,12 @@ class DataSetNPY(object):
         phenotypes = np.zeros((self.batchSize, len(self.phenotypicBaseStrings)), dtype=np.float32)
         batchIndex = 0
         for name in x:
-            path = os.path.join(self.phenotypeBaseString, name)
+            # path = os.path.join(self.phenotypeBaseString, name)
+            path = name
             h5 = h5py.File(path, 'r')
             phenotype_data = []
             for pheno_str in self.phenotypicBaseStrings:
-                print "phenotype test: ", pheno_str, h5[pheno_str][:]
+                # print "phenotype test: ", pheno_str, h5[pheno_str][:]
                 phenotype_data.append(h5[pheno_str][:])
             phenotypes[batchIndex] = phenotype_data
             batchIndex += 1
@@ -137,7 +142,8 @@ class DataSetNPY(object):
 
         volumes = []
         for name in x:
-            path = os.path.join(self.imageBaseString, name)
+            # path = os.path.join(self.imageBaseString, name)
+            path = name
             h5 = h5py.File(path, 'r')
             vol = h5['volume'][:]
             vol = augment.MinMaxNormalization(vol)
@@ -145,14 +151,14 @@ class DataSetNPY(object):
             vol = augment.RandomCrop(vol, 64)
             volumes.append(vol.astype(np.float32))
         volumes = np.array(volumes)
-        print volumes.shape
         return volumes
 
     def _loadLabels(self, x):
 
         labels = []
         for name in x:
-            path = os.path.join(self.labelBaseString, name)
+            # path = os.path.join(self.labelBaseString, name)
+            path = name
             h5 = h5py.File(path, 'r')
             labels.append(h5['label'][:].astype(np.float32))
         labels = np.array(labels)

@@ -5,7 +5,6 @@ from utils.args import *
 from DataSetH5 import DataSetNPY
 from buildCustomCNN import customCNN
 from utils.saveModel import *
-from utils.config import get
 from trainCommon import *
 from shared_placeholders import *
 
@@ -24,6 +23,7 @@ def GetDataSetInputs():
                                       imageBaseString=GlobalOpts.imageBaseString,
                                       imageBatchDims=GlobalOpts.imageBatchDims,
                                       labelBaseString=GlobalOpts.labelBaseString,
+                                      phenotypeBaseString='../processed_data/hdf5_file/',
                                       batchSize=GlobalOpts.batchSize,
                                       augment=GlobalOpts.augment)
 
@@ -32,6 +32,7 @@ def GetDataSetInputs():
                                     imageBaseString=GlobalOpts.imageBaseString,
                                     imageBatchDims=GlobalOpts.imageBatchDims,
                                     labelBaseString=GlobalOpts.labelBaseString,
+                                    phenotypeBaseString='../processed_data/hdf5_file/',
                                     batchSize=1,
                                     maxItemsInQueue=GlobalOpts.numberValdItems,
                                     shuffle=False)
@@ -41,6 +42,7 @@ def GetDataSetInputs():
                                     imageBaseString=GlobalOpts.imageBaseString,
                                     imageBatchDims=GlobalOpts.imageBatchDims,
                                     labelBaseString=GlobalOpts.labelBaseString,
+                                    phenotypeBaseString='../processed_data/hdf5_file/',
                                     batchSize=1,
                                     maxItemsInQueue=GlobalOpts.numberTestItems,
                                     shuffle=False)
@@ -50,25 +52,25 @@ def GetDataSetInputs():
 def DefineDataOpts(summaryName='test_comp'):
     GlobalOpts.imageBatchDims = (-1, 64, 64, 64, 1)
  
-    GlobalOpts.trainFiles = np.load(get('DATA.TRAIN_LIST')).tolist()
-    GlobalOpts.valdFiles = np.load(get('DATA.VALD_LIST')).tolist()
-    GlobalOpts.testFiles = np.load(get('DATA.TEST_LIST')).tolist()
+    d = pd.read_csv('../processed_data/train_test_split.csv')
 
-    GlobalOpts.imageBaseString       = get('DATA.STRUCTURAL.EXTRA_SMALL_PATH')
-    GlobalOpts.phenotypeBaseString   ='../processed_data/hdf5_file/'    
-    GlobalOpts.labelBaseString       = get('DATA.LABELS')
+    GlobalOpts.trainFiles = d[d['Training']]['Volume Path'].as_matrix().tolist()
+    GlobalOpts.valdFiles = d[d['Validation']]['Volume Path'].as_matrix().tolist()
+    GlobalOpts.testFiles = d[d['Testing']]['Volume Path'].as_matrix().tolist()
+
+    GlobalOpts.imageBaseString       = '../processed_data/hdf5_file/'
+    GlobalOpts.phenotypeBaseString   = '../processed_data/hdf5_file/'    
+    GlobalOpts.labelBaseString       = '../processed_data/hdf5_file/'
 
     GlobalOpts.numberTrainItems = len(GlobalOpts.trainFiles)
     GlobalOpts.numberTestItems  = len(GlobalOpts.testFiles)
     GlobalOpts.numberValdItems  = len(GlobalOpts.valdFiles)
     GlobalOpts.poolType = 'MAX'
 
-    GlobalOpts.name = '{} Scale: {}  Data: {}  Batch: {}  Rate: {}'.format(GlobalOpts.type, GlobalOpts.scale, data, GlobalOpts.batchSize, GlobalOpts.learningRate)
+    GlobalOpts.name = '{} Scale: {}  Batch: {}  Rate: {}'.format(GlobalOpts.type, GlobalOpts.scale, GlobalOpts.batchSize, GlobalOpts.learningRate)
    
     if GlobalOpts.padding is not None:
         GlobalOpts.name = '{}Padding{}'.format(GlobalOpts.name, GlobalOpts.padding)
-    if GlobalOpts.regStrength is not None:
-        GlobalOpts.name = '{}L2Reg{}'.format(GlobalOpts.name, GlobalOpts.regStrength)
     if GlobalOpts.maxNorm is not None:
         GlobalOpts.name = '{}MaxNorm{}'.format(GlobalOpts.name, GlobalOpts.maxNorm)
     if GlobalOpts.dropout is not None:
@@ -78,15 +80,16 @@ def DefineDataOpts(summaryName='test_comp'):
                                                      GlobalOpts.name)
     GlobalOpts.checkpointDir = '../checkpoints/{}/{}/'.format(summaryName,
                                                      GlobalOpts.name)
-    GlobalOpts.augment = 'none'
+    GlobalOpts.augment = 'flip'
 
 def GetOps(labelsPL, outputLayer, learningRate=0.0001):
     with tf.variable_scope('LossOperations'):
+        print labelsPL, outputLayer
         lossOp = tf.losses.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MSEOp, MSEUpdateOp = tf.metrics.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MAEOp, MAEUpdateOp = tf.metrics.mean_absolute_error(labels=labelsPL, predictions=outputLayer)
         updateOp, gradients = GetTrainingOperation(lossOp, learningRate)
-        
+
     printOps = PrintOps(ops=[MSEOp, MAEOp],
         updateOps=[MSEUpdateOp, MAEUpdateOp],
         names=['loss', 'MAE'],
@@ -96,14 +99,14 @@ def GetOps(labelsPL, outputLayer, learningRate=0.0001):
 
 def GetArgs():
     additionalArgs = [
-        {
-        'flag': '--scale',
-        'help': 'The scale at which to slice dimensions. For example, a scale of 2 means that each dimension will be devided into 2 distinct regions, for a total of 8 contiguous chunks.',
-        'action': 'store',
-        'type': int,
-        'dest': 'scale',
-        'required': True
-        },
+        # {
+        # 'flag': '--scale',
+        # 'help': 'The scale at which to slice dimensions. For example, a scale of 2 means that each dimension will be devided into 2 distinct regions, for a total of 8 contiguous chunks.',
+        # 'action': 'store',
+        # 'type': int,
+        # 'dest': 'scale',
+        # 'required': True
+        # },
         {
         'flag': '--type',
         'help': 'One of: traditional, reverse',
@@ -121,32 +124,6 @@ def GetArgs():
         'required': True
         },
         {
-        'flag': '--data',
-        'help': 'One of: PNC, PNC_GENDER, ABIDE1, ABIDE2, ABIDE2_AGE',
-        'action': 'store',
-        'type': str,
-        'dest': 'data',
-        'required': True
-        },
-        {
-        'flag': '--sliceIndex',
-        'help': 'Set this to an integer to select a single brain region as opposed to concatenating all regions along the depth channel.',
-        'action': 'store',
-        'type': int,
-        'dest': 'sliceIndex',
-        'required': False,
-        'const': None
-        },
-        {
-        'flag': '--align',
-        'help': 'Set to true to align channels.',
-        'action': 'store',
-        'type': int,
-        'dest': 'align',
-        'required': False,
-        'const': None
-        },
-        {
         'flag': '--numberTrials',
         'help': 'Number of repeated models to run.',
         'action': 'store',
@@ -156,17 +133,8 @@ def GetArgs():
         'const': None
         },
         {
-        'flag': '--padding',
-        'help': 'Set this to an integer to crop the image to the brain and then apply `padding` amount of padding.',
-        'action': 'store',
-        'type': int,
-        'dest': 'padding',
-        'required': False,
-        'const': None
-        },
-        {
         'flag': '--batchSize',
-        'help': 'Batch size to train with. Default is 4.',
+        'help': 'Batch size to train with. Default is 2.',
         'action': 'store',
         'type': int,
         'dest': 'batchSize',
@@ -211,6 +179,15 @@ def GetArgs():
         }
         ]
     ParseArgs('Run 3D CNN over structural MRI volumes', additionalArgs=additionalArgs)
+
+    GlobalOpts.scale = 1
+    GlobalOpts.padding = None
+    GlobalOpts.regStrength = None
+    GlobalOpts.pheno = True
+    if GlobalOpts.summaryName is None:
+        GlobalOpts.summaryName = "test"
+    if GlobalOpts.type is None:
+        GlobalOpts.type = 'traditional'
     if GlobalOpts.numberTrials is None:
         GlobalOpts.numberTrials = 5
     if GlobalOpts.batchSize is None:
@@ -222,7 +199,7 @@ def GetArgs():
 
 def compareCustomCNN(validate=False):
     GetArgs()
-    DefineDataOpts(data=GlobalOpts.data, summaryName=GlobalOpts.summaryName)
+    DefineDataOpts(summaryName=GlobalOpts.summaryName)
     modelTrainer = ModelTrainer()
     trainDataSet, valdDataSet, testDataSet = GetDataSetInputs()
     imagesPL, labelsPL = StructuralPlaceholders(GlobalOpts.imageBatchDims)
@@ -232,20 +209,15 @@ def compareCustomCNN(validate=False):
         convLayers = [8, 16, 32, 64]
     elif GlobalOpts.type == 'reverse':
         convLayers = [64, 32, 16, 8]
-    if GlobalOpts.data == 'PNC' or 'AGE' in GlobalOpts.data:
-        fullyConnectedLayers = [256, 1]
-    else:
-        fullyConnectedLayers = [256, 2]
+
+    fullyConnectedLayers = [256, 1]
     if GlobalOpts.pheno:
         phenotypicBaseStrings=[
-            '/data/psturm/ABIDE/ABIDE2/gender/',
-            '/data/psturm/ABIDE/ABIDE2/IQData/FIQ/',
-            '/data/psturm/ABIDE/ABIDE2/IQData/VIQ/',
-            '/data/psturm/ABIDE/ABIDE2/IQData/PIQ/'
+            'gender',
+            'age',
+            'tiv'
         ]
-        if GlobalOpts.data != 'ABIDE2_AGE':
-            phenotypicBaseStrings.append('/data/psturm/ABIDE/ABIDE2/ages/')
-        phenotypicsPL = tf.placeholder(dtype=tf.float32, shape=(None, len(phenotypicBaseStrings) + 1), name='phenotypicsPL')
+        phenotypicsPL = tf.placeholder(dtype=tf.float32, shape=(None, len(phenotypicBaseStrings)), name='phenotypicsPL')
         trainDataSet.CreatePhenotypicOperations(phenotypicBaseStrings)
         valdDataSet.CreatePhenotypicOperations(phenotypicBaseStrings)
         testDataSet.CreatePhenotypicOperations(phenotypicBaseStrings)
@@ -259,9 +231,9 @@ def compareCustomCNN(validate=False):
                             fullyConnectedLayers,
                             keepProbability=GlobalOpts.dropout,
                             poolType=GlobalOpts.poolType,
-                            sliceIndex=GlobalOpts.sliceIndex,
-                            align=GlobalOpts.align,
-                            padding=GlobalOpts.padding,
+                            # sliceIndex=GlobalOpts.sliceIndex,
+                            # align=GlobalOpts.align,
+                            # padding=GlobalOpts.padding,
                             phenotypicsPL=phenotypicsPL)
     lossOp, printOps, updateOp = GetOps(labelsPL, outputLayer, learningRate=GlobalOpts.learningRate)
     modelTrainer.DefineNewParams(GlobalOpts.summaryDir,
@@ -289,3 +261,8 @@ def compareCustomCNN(validate=False):
                                   printOps,
                                   name=GlobalOpts.name,
                                   numIters=GlobalOpts.numberTrials)
+
+
+if __name__ == '__main__':
+    compareCustomCNN()
+    # compareCustomCNN(validate=True)

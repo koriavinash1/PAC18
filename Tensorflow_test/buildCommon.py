@@ -1,12 +1,11 @@
 import tensorflow as tf
 import numpy as np
-from utils.config import get
 from utils.patches import ExtractImagePatches3D
 from shared_placeholders import *
 from utils.args import *
 
 def standardBatchNorm(inputs, trainingPL, momentum=0.9, name=None):
-    return tf.layers.batch_normalization(inputs, training=trainingPL, momentum=momentum, name=name, reuse=tf.AUTO_REUSE)
+    return tf.layers.batch_normalization(inputs, training=trainingPL, momentum=momentum, name=name)
 
 def standardPool(inputs, kernel_size=[1,2,2,2,1], strides=[1,2,2,2,1], padding='SAME', name=None):
     return tf.nn.max_pool3d(inputs, ksize=kernel_size, strides=strides, padding=padding, name=name)
@@ -24,8 +23,9 @@ def standardConvolution(inputs, filters, kernel_size=(3,3,3), activation=tf.nn.e
     return tf.layers.conv3d(inputs=inputs, filters=filters, kernel_size=kernel_size,
                             strides=strides, padding=padding, activation=activation,
                             use_bias=True, kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                            kernel_regularizer=kernel_regularizer, kernel_constraint=kernel_constraint,
-                            bias_initializer=tf.zeros_initializer(), name=name, reuse=tf.AUTO_REUSE)
+                            kernel_regularizer=kernel_regularizer, 
+                            kernel_constraint=kernel_constraint,
+                            bias_initializer=tf.zeros_initializer(), name=name)
 
 def standardDense(inputs, units, activation=tf.nn.elu, use_bias=True, name=None):
     if use_bias:
