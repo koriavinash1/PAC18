@@ -85,13 +85,14 @@ def DefineDataOpts(summaryName='test_comp'):
 def GetOps(labelsPL, outputLayer, learningRate=0.0001):
     with tf.variable_scope('LossOperations'):
         print labelsPL, outputLayer
-        correct_predictions = tf.equal(tf.argmax(labelsPL,1), tf.argmax(outputLayer,1))
-        accOp = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+        # correct_predictions = tf.equal(tf.argmax(labelsPL,1), tf.argmax(outputLayer,1))
+        # accOp = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
         lossOp = tf.losses.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MSEOp, MSEUpdateOp = tf.metrics.mean_squared_error(labels=labelsPL, predictions=outputLayer)
         MAEOp, MAEUpdateOp = tf.metrics.mean_absolute_error(labels=labelsPL, predictions=outputLayer)
         updateOp, gradients = GetTrainingOperation(lossOp, learningRate)
-        print accOp
+        accOp = 0
+
     printOps = PrintOps(ops=[MSEOp, MAEOp],
         updateOps=[MSEUpdateOp, MAEUpdateOp],
         names=['loss', 'MAE'],
@@ -212,7 +213,7 @@ def compareCustomCNN(validate=False):
     elif GlobalOpts.type == 'reverse':
         convLayers = [64, 32, 16, 8]
 
-    fullyConnectedLayers = [256, 2]
+    fullyConnectedLayers = [256, 1]
     if GlobalOpts.pheno:
         phenotypicBaseStrings=[
             'gender',

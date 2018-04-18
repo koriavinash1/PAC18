@@ -12,7 +12,7 @@ class DataSetNPY(object):
             phenotypeBaseString,
             labelBaseString,
             imageBatchDims,
-            labelBatchDims=(-1,2),
+            labelBatchDims=(-1,1),
             batchSize=4,
             maxItemsInQueue=50,
             shuffle=True,
@@ -159,7 +159,8 @@ class DataSetNPY(object):
             # path = os.path.join(self.labelBaseString, name)
             path = name
             h5 = h5py.File(path, 'r')
-            label = np.eye(2, dtype=np.float32)[int(h5['label'][:] -1)]
+            # label = np.eye(2, dtype=np.float32)[int(h5['label'][:] -1)]
+            label = h5['label'][:]
             labels.append(label)
         labels = np.array(labels, dtype=np.float32)
         # print labels.shape, labels.dtype

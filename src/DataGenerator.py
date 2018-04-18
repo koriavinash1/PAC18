@@ -2,6 +2,9 @@ import torch
 from torch.utils.data import Dataset
 from DataAugment import DataAugment
 from torch.utils.data import DataLoader
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 from PIL import Image
 import os
 import os.path
@@ -69,10 +72,10 @@ def numpy_loader(path):
 def hdf5_loader(path):
 	h5 = h5py.File(path,'r')
 	img = h5['volume'][:]
-	# age = h5['age'][:]
-	# gender = h5['gender'][:]
-	# tiv = h5['tiv'][:]
-	age, gender, tiv = 0, 0, 0
+	age = h5['age'][:]
+	gender = h5['gender'][:]
+	tiv = h5['tiv'][:]
+	# age, gender, tiv = 0, 0, 0
 	
 	# print img.shape
 	# add data augmentation....
@@ -147,7 +150,7 @@ class DatasetGenerator(Dataset):
 			tuple: (image, target) where target is class_index of the target class.
 		"""
 		imagePath = self.listImagePaths[index]
-		numpy_image = self.loader(imagePath)[0]
+		numpy_image, age, gender, tiv  = self.loader(imagePath)
 
 		# Augmentation parameteres.....
 		try:
@@ -161,13 +164,9 @@ class DatasetGenerator(Dataset):
 		except: pass
 
 		try:
-			resize = self.transform['Resize']
-			numpy_image = augment.Resize(numpy_image, resize)
-		except: pass
-
-		try:
 			random_resize = self.transform['RandomResizedCrop']
 			numpy_image = augment.RandomCrop(numpy_image, random_resize)
+			# print numpy_image.shape
 		except: pass
 		
 		try:
@@ -179,12 +178,15 @@ class DatasetGenerator(Dataset):
 			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
 		else: imageData = torch.from_numpy(np.expand_dims(numpy_image, 1))
 
-		imageLabel= torch.FloatTensor(one_hot(self.listImageLabels[index], nclasses=2))
-		
+		imageLabel = torch.FloatTensor(one_hot(self.listImageLabels[index], nclasses=2))
+		imageAge = torch.FloatTensor(age)
+		imageGender = torch.FloatTensor(gender)
+		imageTiv = torch.FloatTensor(tiv)
+
 		# print imageData.size()
-		# print imagePath, imageData.size(), imageLabel 
+		# print imagePath, imageData.size(), imageLabel, imageTiv, imageAge, imageGender
 		
-		return imageData, imageLabel, imagePath
+		return imageData, imageLabel, imageAge, imageGender, imageTiv, imagePath
 
 	def __len__(self):
 

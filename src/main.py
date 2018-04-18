@@ -16,7 +16,7 @@ Trainer = Trainer()
 Tester  = Tester()
 
 nclasses = 2
-data = DenseNet3D(2)
+data = DenseNet3D()
 
 #-------------------------------------------------------------------------------- 
 
@@ -49,12 +49,12 @@ def runTrain(nnArchitecture = None):
 	nnClassCount = nclasses
 	
 	#---- Training settings: batch size, maximum number of epochs
-	trBatchSize = 2
+	trBatchSize = 4
 	trMaxEpoch = 30
 	
 	#---- Parameters related to image transforms: size of the down-scaled image, cropped image
-	imgtransResize = 82
-	imgtransCrop = 64
+	imgtransResize = 32
+	imgtransCrop = 24
 	
 	print ('Training NN architecture = ', nnArchitecture['name'])
 
@@ -69,9 +69,9 @@ def runTest():
 	TestVolPaths, TestLabels = getDataPaths(Path, 'Testing')
 	nnClassCount = nclasses
 
-	trBatchSize = 2
-	imgtransResize = 82
-	imgtransCrop = 64
+	trBatchSize = 1
+	imgtransResize = 32
+	imgtransCrop = 24
 	
 	pathsModel = ['../models/modeldensenet3D.csv']
 	

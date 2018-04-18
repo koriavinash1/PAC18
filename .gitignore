@@ -1,6 +1,7 @@
 *models*
 *raw_data*
 *summaries*
+*checkpoints*
 *.ipython_checkpoints*
 *processed_data*
 *additional_data*

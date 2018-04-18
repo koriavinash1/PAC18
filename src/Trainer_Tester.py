@@ -143,13 +143,16 @@ class Trainer ():
 	def epochTrain (self, model, dataLoader, optimizer, scheduler, epochMax, classCount, loss, trBatchSize):
 		
 		model.train()
-		for batchID, (input, target, _) in tqdm(enumerate (dataLoader)):
+		for batchID, (input, target, age, gender, tiv, _) in tqdm(enumerate (dataLoader)):
 			# print 		
 			target = target.cpu()
 			
 			varInput = torch.autograd.Variable(input.cpu())
+			varAge = torch.autograd.Variable(age)  
+			varGender = torch.autograd.Variable(gender)  
+			varTiv = torch.autograd.Variable(tiv)  
 			varTarget = torch.autograd.Variable(target)        
-			varOutput = model(varInput)
+			varOutput = model(varInput, varAge, varGender, varTiv)
 			# print varInput.size(), varOutput.size(), target.size()
 			# varOutput = torch.FloatTensor([0])
 			lossvalue = loss(varOutput, varTarget)	   
@@ -170,17 +173,20 @@ class Trainer ():
 		confusion_meter.reset()
 
 		acc = 0.0
-		for i, (input, target, _) in enumerate (dataLoader):
+		for i, (input, target, age, gender, tiv,_) in enumerate (dataLoader):
 			
 			target = target.cpu()
 				 
 			varInput = torch.autograd.Variable(input.cpu(), volatile=True)
-			varTarget = torch.autograd.Variable(target, volatile=True)    
-			varOutput = model(varInput)
+			varAge = torch.autograd.Variable(age, volatile=True)  
+			varGender = torch.autograd.Variable(gender, volatile=True)  
+			varTiv = torch.autograd.Variable(tiv, volatile=True)  
+			varTarget = torch.autograd.Variable(target, volatile=True)        
+			varOutput = model(varInput, varAge, varGender, varTiv)
 			
 			acc += self.accuracy(varOutput, varTarget)/ (len(dataLoader)*trBatchSize)
 			losstensor = loss(varOutput, varTarget)
-			print varOutput, varTarget
+			# print varOutput, varTarget
 			losstensorMean += losstensor
 			# confusion_meter.add(varOutput.view(-1), varTarget.data.view(-1))
 			lossVal += losstensor.data[0]

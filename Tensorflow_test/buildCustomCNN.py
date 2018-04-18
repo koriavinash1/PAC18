@@ -46,6 +46,6 @@ def customCNN(imagesPL,
                 hiddenLayer = standardDense(hiddenLayer, units=numUnits, name='hiddenLayer{}'.format(numUnits))
                 hiddenLayer = tf.contrib.layers.dropout(inputs=hiddenLayer, keep_prob=keepProbability, is_training=trainingPL)
             outputUnits = fullyConnectedLayers[-1]
-            outputLayer = standardDense(hiddenLayer, units=outputUnits, use_bias=True, name='outputLayer')
-            outputLayer = tf.nn.softmax(outputLayer, name='softmaxLayer')
+            outputLayer = standardDense(hiddenLayer, units=outputUnits, activation=None, use_bias=True, name='outputLayer')
+            outputLayer = tf.nn.sigmoid(outputLayer, name='sigmoid')
         return outputLayer
