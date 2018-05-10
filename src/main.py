@@ -15,36 +15,72 @@ from Trainer_Tester import Tester
 Trainer = Trainer()
 Tester  = Tester()
 
-nclasses = 2
+nclasses = 10
 data = DenseNet3D()
 
 #-------------------------------------------------------------------------------- 
 
 def main (nnClassCount=nclasses):
-	nnArchitectureList = [{'name': 'densenet3D', 'model' : DenseNet3D(num_classes = nnClassCount)}]
+	# "Define Architectures and run one by one"
+
+	nnArchitectureList = [
+			           		{
+			           			'name': 'densenet3D_scanner_1_female', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_1_female_train_test_split.csv'
+			           		},
+			           		{
+			           			'name': 'densenet3D_scanner_2_female', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_2_female_train_test_split.csv'
+			           		},
+			           		{
+			           			'name': 'densenet3D_scanner_3_female', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_3_female_train_test_split.csv'
+			           		},
+			           		{
+			           			'name': 'densenet3D_scanner_1_male', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_1_male_train_test_split.csv'
+			           		},
+			           		{
+			           			'name': 'densenet3D_scanner_2_male', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_2_male_train_test_split.csv'
+			           		},
+			           		{
+			           			'name': 'densenet3D_scanner_3_male', 
+			           			'model' : DenseNet3D(out_number = nnClassCount), 
+			           			'Path': '../processed_data/scanner_3_male_train_test_split.csv'
+			           		}						
+				    	]
 
 	for nnArchitecture in nnArchitectureList:
 		runTrain(nnArchitecture=nnArchitecture)
-  
+
+
+
 def getDataPaths(path, mode):
  	data = pd.read_csv(path)
- 	imgpaths = data[data[mode]]['Volume Path'].as_matrix()
- 	imglabels = data[data[mode]]['Labels'].as_matrix() - 1.0
+ 	imgpaths = data[data[mode]]['Volume_Path'].as_matrix()
+ 	# imglabels = data[data[mode]]['Labels'].as_matrix() - 1.0
  	# print imglabels
- 	return imgpaths, imglabels
+ 	return imgpaths
 
 #--------------------------------------------------------------------------------   
 
-def runTrain(nnArchitecture = None):
+def runTrain(nnArchitecture = None, mode = 'male', scanner=1):
 	
 	timestampTime = time.strftime("%H%M%S")
 	timestampDate = time.strftime("%d%m%Y")
 	timestampLaunch = timestampDate + '-' + timestampTime
 	
-	Path = '../processed_data/train_test_split.csv'
+	Path = nnArchitecture['Path']
+
 	#---- Path to the directory with images
-	TrainVolPaths, TrainLabels = getDataPaths(Path, 'Training')
-	ValidVolPaths, ValidLabels = getDataPaths(Path, 'Validation')
+	TrainVolPaths = getDataPaths(Path, 'Training')
+	ValidVolPaths = getDataPaths(Path, 'Validation')
 
 	nnClassCount = nclasses
 	
@@ -53,12 +89,12 @@ def runTrain(nnArchitecture = None):
 	trMaxEpoch = 30
 	
 	#---- Parameters related to image transforms: size of the down-scaled image, cropped image
-	imgtransResize = 32
-	imgtransCrop = 24
+	imgtransResize = 82
+	imgtransCrop = 64
 	
 	print ('Training NN architecture = ', nnArchitecture['name'])
 
-	Trainer.train(TrainVolPaths, TrainLabels,  ValidVolPaths, ValidLabels, nnArchitecture, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, None)
+	Trainer.train(TrainVolPaths,  ValidVolPaths, nnArchitecture, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, None)
 
 
 #-------------------------------------------------------------------------------- 
@@ -66,20 +102,20 @@ def runTrain(nnArchitecture = None):
 def runTest():
 	
 	Path = '../processed_data/train_test_split.csv'
-	TestVolPaths, TestLabels = getDataPaths(Path, 'Testing')
+	TestVolPaths = getDataPaths(Path, 'Testing')
 	nnClassCount = nclasses
 
 	trBatchSize = 1
-	imgtransResize = 32
-	imgtransCrop = 24
+	imgtransResize = 82
+	imgtransCrop = 64
 	
-	pathsModel = ['../models/modeldensenet3D.csv']
+	pathsModel = ['../models/densenet3D.csv']
 	
 	timestampLaunch = ''
 
 	# nnArchitecture = DenseNet121(nnClassCount, nnIsTrained)
 	print ('Testing the trained model')
-	Tester.test(TestVolPaths, TestLabels, pathsModel, nnClassCount, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
+	Tester.test(TestVolPaths, pathsModel, nnClassCount, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)
 #-------------------------------------------------------------------------------- 
 
 if __name__ == '__main__':	

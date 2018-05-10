@@ -44,13 +44,13 @@ class Trainer ():
 	#---- TODO:
 	#---- checkpoint - if not None loads the model and continues training
 	
-	def train (self, TrainVolPaths, TrainLabels,  ValidVolPaths, ValidLabels, nnArchitecture, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint):
+	def train (self, TrainVolPaths, ValidVolPaths, nnArchitecture, nnClassCount, trBatchSize, trMaxEpoch, imgtransResize, imgtransCrop, timestampLaunch, checkpoint):
 
 		
 		#-------------------- SETTINGS: NETWORK ARCHITECTURE
 		model = nnArchitecture['model']
 		
-		model = torch.nn.DataParallel(model)
+		# model = torch.nn.DataParallel(model)
 				
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
@@ -61,8 +61,8 @@ class Trainer ():
 		transformList['Sequence'] = True
 
 		#-------------------- SETTINGS: DATASET BUILDERS
-		datasetTrain = DatasetGenerator(imgs = TrainVolPaths, classes = TrainLabels, transform=transformList)
-		datasetVal =   DatasetGenerator(imgs =ValidVolPaths, classes = ValidLabels, transform=transformList)
+		datasetTrain = DatasetGenerator(imgs = TrainVolPaths, transform=transformList)
+		datasetVal =   DatasetGenerator(imgs =ValidVolPaths, transform=transformList)
 			  
 		dataLoaderTrain = DataLoader(dataset=datasetTrain, batch_size=trBatchSize, shuffle=True,  num_workers=8, pin_memory=False)
 		dataLoaderVal = DataLoader(dataset=datasetVal, batch_size=trBatchSize, shuffle=False, num_workers=8, pin_memory=False)
@@ -112,7 +112,7 @@ class Trainer ():
 				archs.append(nnArchitecture['name'])
 				losses.append(lossMIN)
 				accs.append(acc)
-				model_name = '../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + '.pth.tar'
+				model_name = '../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + 'loss = ' + str(lossVal) + ' accuracy = ' + str(acc)+ '.pth.tar'
 
 				torch.save(model, model_name)
 				print ('Epoch [' + str(epochID + 1) + '] [save] [' + launchTimestamp + '] loss= ' + str(lossVal) + ' accuracy= ' + str(acc))
@@ -124,7 +124,7 @@ class Trainer ():
 		sub['loss'] = losses
 		sub['acc'] = accs
 
-		sub.to_csv('../models/' + 'model' + nnArchitecture['name'] + '.csv', index=True)
+		sub.to_csv('../models/' + nnArchitecture['name'] + '.csv', index=True)
 		
 					 
 	#-------------------------------------------------------------------------------- 
@@ -143,16 +143,17 @@ class Trainer ():
 	def epochTrain (self, model, dataLoader, optimizer, scheduler, epochMax, classCount, loss, trBatchSize):
 		
 		model.train()
-		for batchID, (input, target, age, gender, tiv, _) in tqdm(enumerate (dataLoader)):
+		for batchID, (input, target, age, tiv, _) in tqdm(enumerate (dataLoader)):
 			# print 		
 			target = target.cpu()
 			
 			varInput = torch.autograd.Variable(input.cpu())
 			varAge = torch.autograd.Variable(age)  
-			varGender = torch.autograd.Variable(gender)  
 			varTiv = torch.autograd.Variable(tiv)  
-			varTarget = torch.autograd.Variable(target)        
-			varOutput = model(varInput, varAge, varGender, varTiv)
+			varTarget = torch.autograd.Variable(target)
+
+			varOutput = model(varInput, varAge, varTiv)
+
 			# print varInput.size(), varOutput.size(), target.size()
 			# varOutput = torch.FloatTensor([0])
 			lossvalue = loss(varOutput, varTarget)	   
@@ -173,16 +174,15 @@ class Trainer ():
 		confusion_meter.reset()
 
 		acc = 0.0
-		for i, (input, target, age, gender, tiv,_) in enumerate (dataLoader):
+		for i, (input, target, age, tiv,_) in enumerate (dataLoader):
 			
 			target = target.cpu()
 				 
 			varInput = torch.autograd.Variable(input.cpu(), volatile=True)
 			varAge = torch.autograd.Variable(age, volatile=True)  
-			varGender = torch.autograd.Variable(gender, volatile=True)  
 			varTiv = torch.autograd.Variable(tiv, volatile=True)  
 			varTarget = torch.autograd.Variable(target, volatile=True)        
-			varOutput = model(varInput, varAge, varGender, varTiv)
+			varOutput = model(varInput, varAge, varTiv)
 			
 			acc += self.accuracy(varOutput, varTarget)/ (len(dataLoader)*trBatchSize)
 			losstensor = loss(varOutput, varTarget)
@@ -235,7 +235,7 @@ class Tester():
 		acc = float(np.sum(output == labels))/len(labels)
 		return acc
 
-	def test (self, TestVolPaths, TestLabels, pathsModel, nnClassCount, trBatchSize, transResize, transCrop, launchTimeStamp):
+	def test (self, TestVolPaths, pathsModel, nnClassCount, trBatchSize, transResize, transCrop, launchTimeStamp):
 
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
@@ -248,7 +248,7 @@ class Tester():
 
 		transformList['Sequence'] = True
 		
-		datasetTest = DatasetGenerator(imgs = TestVolPaths, classes = TestLabels, transform=transformList)
+		datasetTest = DatasetGenerator(imgs = TestVolPaths, transform=transformList)
 		dataLoaderTest = DataLoader(dataset=datasetTest, batch_size=1, num_workers=8, shuffle=False, pin_memory=False)
 		
 		# results per image

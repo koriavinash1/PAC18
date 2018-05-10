@@ -72,15 +72,10 @@ def numpy_loader(path):
 def hdf5_loader(path):
 	h5 = h5py.File(path,'r')
 	img = h5['volume'][:]
-	age = h5['age'][:]
-	gender = h5['gender'][:]
-	tiv = h5['tiv'][:]
-	# age, gender, tiv = 0, 0, 0
-	
-	# print img.shape
-	# add data augmentation....
-	# img, lbl, weight = getPatchSize(img, lbl,weight)
-	return img, age, gender, tiv
+	age = h5['age'][:]/100.0 # normalizing values
+	tiv = h5['tiv'][:]/3000.0 # normalizing values
+	label = h5['label'][:]
+	return img, age, tiv, label
 
 def accimage_loader(path):
 	import accimage
@@ -101,7 +96,7 @@ def default_loader(path):
 #-------------------------------------------------------------------------------- 
 def one_hot(val, nclasses):
 	a = np.zeros(nclasses)
-	a[int(val)] = 1
+	a[int(val) - 1] = 1
 	return a
 
 
@@ -123,12 +118,12 @@ class DatasetGenerator(Dataset):
 		imgs (list): List of (image path, class_index) tuples
 	"""
 
-	def __init__(self, imgs, classes, transform=None, loader=hdf5_loader):
+	def __init__(self, imgs, transform=None, loader=hdf5_loader):
 
 		self.listImagePaths = imgs
-		self.listImageLabels = classes
 		self.transform = transform
 		self.loader = loader
+
 		print (self.transform)
 		for key in self.transform:
 			if key not in ALLOWED_TRANSFORMS:
@@ -137,9 +132,9 @@ class DatasetGenerator(Dataset):
 
 
 		# sanity check...
-		print (len(self.listImagePaths), len(self.listImageLabels))
+		print (len(self.listImagePaths))
 		self.listImagePaths = self.listImagePaths[:50]
-		self.listImageLabels = self.listImageLabels[:50]
+		# self.listImageLabels = self.listImageLabels[:50]
 
 	def __getitem__(self, index):
 		"""
@@ -150,7 +145,7 @@ class DatasetGenerator(Dataset):
 			tuple: (image, target) where target is class_index of the target class.
 		"""
 		imagePath = self.listImagePaths[index]
-		numpy_image, age, gender, tiv  = self.loader(imagePath)
+		numpy_image, age, tiv, label  = self.loader(imagePath)
 
 		# Augmentation parameteres.....
 		try:
@@ -178,15 +173,14 @@ class DatasetGenerator(Dataset):
 			imageData = torch.from_numpy(np.expand_dims(numpy_image, 0))
 		else: imageData = torch.from_numpy(np.expand_dims(numpy_image, 1))
 
-		imageLabel = torch.FloatTensor(one_hot(self.listImageLabels[index], nclasses=2))
+		imageLabel = torch.FloatTensor(one_hot(label, nclasses=2))
 		imageAge = torch.FloatTensor(age)
-		imageGender = torch.FloatTensor(gender)
 		imageTiv = torch.FloatTensor(tiv)
 
 		# print imageData.size()
 		# print imagePath, imageData.size(), imageLabel, imageTiv, imageAge, imageGender
 		
-		return imageData, imageLabel, imageAge, imageGender, imageTiv, imagePath
+		return imageData, imageLabel, imageAge, imageTiv, imagePath
 
 	def __len__(self):
 

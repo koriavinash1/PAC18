@@ -5,17 +5,16 @@ import torch.utils.model_zoo as model_zoo
 from collections import OrderedDict
 
 
-
 class _DenseLayer(nn.Sequential):
     def __init__(self, num_input_features, growth_rate, bn_size, drop_rate):
         super(_DenseLayer, self).__init__()
-        self.add_module('norm.1', nn.BatchNorm3d(num_input_features)),
-        self.add_module('relu.1', nn.ReLU(inplace=True)),
-        self.add_module('conv.1', nn.Conv3d(num_input_features, bn_size *
+        self.add_module('norm1', nn.BatchNorm3d(num_input_features)),
+        self.add_module('relu1', nn.ReLU(inplace=True)),
+        self.add_module('conv1', nn.Conv3d(num_input_features, bn_size *
                         growth_rate, kernel_size=1, stride=1, bias=False)),
-        self.add_module('norm.2', nn.BatchNorm3d(bn_size * growth_rate)),
-        self.add_module('relu.2', nn.ReLU(inplace=True)),
-        self.add_module('conv.2', nn.Conv3d(bn_size * growth_rate, growth_rate,
+        self.add_module('norm2', nn.BatchNorm3d(bn_size * growth_rate)),
+        self.add_module('relu2', nn.ReLU(inplace=True)),
+        self.add_module('conv2', nn.Conv3d(bn_size * growth_rate, growth_rate,
                         kernel_size=5, stride=1, padding=2, bias=False)),
         self.drop_rate = drop_rate
 
@@ -41,7 +40,7 @@ class _Strider(nn.Sequential):
         self.add_module('relu', nn.ReLU(inplace=True))
         self.add_module('conv', nn.Conv3d(num_input_features, num_output_features,
                                           kernel_size=5, stride=1, bias=False)) ## reduce the size of the feature map
-        ##self.add_module('pool', nn.AvgPool2d(kernel_size=2, stride=2))        ## removed the average pooling layer. 
+        self.add_module('pool', nn.AvgPool3d(kernel_size=2, stride=2))        ## removed the average pooling layer. 
 
 
 
@@ -72,39 +71,33 @@ class _Strider(nn.Sequential):
 #         return out
 
 class OutputTransition(nn.Module):
-    def __init__(self, inChans, num_classes):
+    def __init__(self, inChans, out_number):
         super(OutputTransition, self).__init__()
         self.bn1 = nn.BatchNorm3d(inChans)
         self.relu1 = nn.ReLU(inplace=True)
-        self.conv1 = nn.Conv3d(inChans, 8, kernel_size=5)
-        self.conv2 = nn.Conv3d(8, 4, kernel_size=3)
-        self.conv3 = nn.Conv3d(4, num_classes, kernel_size=2)
-        self.softmax = F.log_softmax
+        self.conv1 = nn.Conv3d(inChans, 4, kernel_size=5)
+        self.conv3 = nn.Conv3d(4, out_number, kernel_size=2)
 
 
     def forward(self, x):
         out = self.conv1(self.relu1(self.bn1(x)))
-        out = self.conv2(self.relu1(out))
         out = self.conv3(self.relu1(out))
-        # out = self.softmax(out)   #### take logsoftmax
         return out
 
 class PhenotypeLayer(nn.Module):
     """docstring for PhenotypeLayer"""
     def __init__(self):
         super(PhenotypeLayer, self).__init__()
-        self.layer1_c = nn.Linear(2, 10)
-        self.layer1_a = nn.Linear(1, 10)
-        self.layer1_g = nn.Linear(1, 10)
-        self.layer1_t = nn.Linear(1, 10)
-        self.layer2 = nn.Linear(10, 2)
+        self.layer1_c = nn.Linear(10, 32)
+        self.layer1_a = nn.Linear(1, 32)
+        self.layer1_t = nn.Linear(1, 32)
+        self.layer2 = nn.Linear(32, 2)
 
-    def forward(self, _class, _age, _gender, _tiv):
+    def forward(self, _class, _age, _tiv):
         out_c = self.layer1_c(_class)
         out_a = self.layer1_a(_age)
-        out_g = self.layer1_g(_gender)
         out_t = self.layer1_t(_tiv)
-        out = out_c + out_t + out_g + out_a
+        out = out_c + out_t + out_a
         out = self.layer2(out)
         return out
 
@@ -119,10 +112,10 @@ class DenseNet3D(nn.Module):
         bn_size (int) - multiplicative factor for number of bottle neck layers
           (i.e. bn_size * k features in the bottleneck layer)
         drop_rate (float) - dropout rate after each dense layer
-        num_classes (int) - number of classification classes
+        out_number (int) - number of classification classes
     """
-    def __init__(self, growth_rate=2, block_config=(2, 2, 2, 2, 2),
-                 num_init_features=2, bn_size=2, drop_rate=0.6, num_classes=2):
+    def __init__(self, growth_rate=8, block_config=(2, 3, 4, 3, 2),
+                 num_init_features=6, bn_size=2, drop_rate=0.2, out_number=10):
 
         super(DenseNet3D, self).__init__()
 
@@ -131,7 +124,7 @@ class DenseNet3D(nn.Module):
             ('conv0', nn.Conv3d(1, num_init_features, kernel_size=5, stride=1, padding=2, bias=False)),
             ('norm0', nn.BatchNorm3d(num_init_features)),
             ('relu0', nn.ReLU(inplace=True)),
-            #('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),  ## removed max pool layer in the first conv. Made the operation operation such that feature map size is similar to input
+            ('pool0', nn.AvgPool3d(kernel_size=3, stride=2, padding=1)),# Average Pooling layer 
         ]))
 
         # Each denseblock
@@ -151,7 +144,7 @@ class DenseNet3D(nn.Module):
 
         # Linear layer
         # self.Linear_classifier = nn.Linear(8*8*8, num_classes)
-        self.classifier   = OutputTransition(num_features, num_classes)
+        self.classifier   = OutputTransition(num_features, out_number)
 
         # Official init from torch repo.
         for m in self.modules():
@@ -163,11 +156,11 @@ class DenseNet3D(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
 
-    def forward(self, x, age, gender, tiv):
+    def forward(self, x, age, tiv):
         features = self.features(x)
         out = F.relu(features, inplace=True)
         #out = F.avg_pool2d(out, kernel_size=7, stride=1).view(features.size(0), -1)
         out = self.classifier(out).view(out.size(0), -1)
-        out = PhenotypeLayer()(out, age, gender, tiv)
+        out = PhenotypeLayer()(out, age, tiv)
         out = F.softmax(out)
         return out
