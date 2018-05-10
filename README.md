@@ -13,8 +13,6 @@ sMRI based depression classification
 
 ### Packages Required
 
-> keras (updated)
-
 > jupyter
 
 > pytorch

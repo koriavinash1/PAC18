@@ -1,3 +1,5 @@
 SimpleITK
 tqdm
-
+nibable
+SimpleITK
+pandas
