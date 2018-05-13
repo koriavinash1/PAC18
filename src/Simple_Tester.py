@@ -1,152 +1,104 @@
 import os
 import torch
+import h5py
 from torchvision import transforms
 from PIL import Image
 from torch.autograd import Variable
 import numpy as np
+import pandas as pd
 
 zeros=0
 ones =0
+transform = {'MinMax': True, 'Resize': 82, 'TenCrop': 64}
 
+s1_data = pd.read_csv('../')
+s23_data = pd.read_csv('../')
+info = pd.read_csv('../')# PAC_info_sheet.csv
 
-path_to_test = '../'
-class_of_interest =4
-path_containing_primary_models = '/home/brats/drbackup/DR2/v_model/primary'
-path_containing_expert_models = '/home/brats/drbackup/DR2/v_model/expert_a'
+fiels = []
+files.extend(s1_data[s1_data['Testing']]['Volume_Path'])
+files.extend(s23_data[s23_data['Testing']]['Volume_Path'])
 
-files = os.listdir(path_to_test)
+class_of_interest = [0,1]
 
-trained_primary_models = os.listdir(path_containing_primary_models) 
-trained_expert_models  = os.listdir(path_containing_expert_models)
+scanner_1_model = torch.load('../xyz')
+scanner_23_model = torch.load('../xyz')
 
 cntr =0
 total_number_of_files=0
 
-final_model_prediction= []
-
-
+predictions, gts =[], []
 
 for f in files:
 
-	if 'jpg' or 'png' in f:
-
-		test_data = Image.open(path_to_test+'/'+f).convert('RGB')
-
+		id_ = f.split('/').pop().split('.')[0]
+		h5 = h5py.File(f,'r')
+		vol = h5['volume'][:]
+		age = h5['age'][:]/100.0 # normalizing values
+		tiv = h5['tiv'][:]/3000.0 # normalizing values
+		label = h5['label'][:]
+		scanner = int(info[info['PAC_ID'] == id_]['Scanner'])
 		print ('currently testing',f)
- 
-		model_prediction =[]
+		print ('file info: {}'.format(id_) + ' scanner info: {}'.format(scanner))
 
-		for model in trained_primary_models:
+		# apply transforms
+		try:
+			minmax = transform['MinMax']
+			numpy_image = augment.MinMaxNormalization(numpy_image)
+		except: pass
 
-			# print ('testing with model===>',model)
-			if 'IMAGENET' in model:
-				transformed_image = transformIMAGENET(test_data)   ### currently in 10,3,224,224
-			if 'IRID' in model:
-				print('loading IRID stats')
-				transformed_image = transformIRID(test_data)
-			
+		try:
+			resize = transform['Resize']
+			numpy_image = augment.Resize(numpy_image, resize)
+		except: pass
 
-			model_to_test =torch.load(path_containing_primary_models+'/'+model)
-			# model_to_test.eval()
+		try:
+			random_resize = transform['RandomResizedCrop']
+			numpy_image = augment.RandomCrop(numpy_image, random_resize)
+			# print numpy_image.shape
+		except: pass
 
-			outs = model_to_test(Variable(transformed_image,volatile=True))
-			del model_to_test
-			del transformed_image
+		try:
+			tencrop = transform['TenCrop']
+			numpy_image = augment.TenCrop(numpy_image, tencrop)
+		except: pass
 
-			_,class_associated_to_each_Crop = torch.max(outs,1)
+		if len(numpy_image.shape) == 3:
+			imageData = Variable(torch.from_numpy(np.expand_dims(numpy_image, 0)), volatile=True)
+		else: imageData = Variable(torch.from_numpy(np.expand_dims(numpy_image, 1)), volatile=True)
 
-			del _
-			del outs
+		imageAge = Variable(torch.FloatTensor(age), volatile=True)
+		imageTiv = Variable(torch.FloatTensor(tiv),volatile=True)
 
-			class_associated_to_each_Crop = class_associated_to_each_Crop.data.cpu().numpy()
-			unique,counts = np.unique(class_associated_to_each_Crop,return_counts=True)
 
-			del class_associated_to_each_Crop
+		# prediction code
+		gts.append(label)
+		if scanner == 1:
+			outs = scanner_1_model(imageData, imageAge, imageTiv)
+		else:
+			outs = scanner_23_model(imageData, imageAge, imageTiv)
 
-			image_pred = unique[np.argmax(counts)] ### one max done
-			del unique
-			del counts
+		_,class_associated_to_each_Crop = torch.max(outs,1)
+		del _
+		del outs
 
-			model_prediction.append(image_pred)
+		class_associated_to_each_Crop = class_associated_to_each_Crop.data.cpu().numpy()
+		unique,counts = np.unique(class_associated_to_each_Crop,return_counts=True)
 
-		## technically model prediction should contain as many predictions as the number of primary models
+		del class_associated_to_each_Crop
 
-		## time to do second max,
-		model_prediction= np.array(model_prediction)
-		unique,counts = np.unique(model_prediction,return_counts=True)
-		primay_prediction = unique[np.argmax(counts)]
+		image_pred = unique[np.argmax(counts)] ### one max done
 		del unique
 		del counts
 
-		del model_prediction
+		predictions.append(image_pred)
 
+conf_mat = [[0, 0], [0, 0]]
+conf_mat[0,0] = np.sum((predictions == 0 and gts == 0))
+conf_mat[1,1] = np.sum((predictions == 1 and gts == 1))
+conf_mat[0,1] = np.sum((predictions == 0 and gts == 1))
+conf_mat[1,0] = np.sum((predictions == 1 and gts == 0))
 
-		if primay_prediction ==3:   ## if statisfied, ensemble has assigned the class 3 (S-NDPR), use expert models
-			expert_prediction=[]
-			for e_model in trained_expert_models:
-
-				if 'IMAGENET' in e_model:
-					transformed_image = transformIMAGENET(test_data)   ### currently in 10,3,224,224
-
-				if 'IRID' in e_model:
-					transformed_image = transformIRID(test_data)	
-
-				expert_model_to_test = torch.load(path_containing_expert_models+'/'+e_model)
-				# expert_model_to_test.eval()
-				outs = expert_model_to_test(Variable(transformed_image,volatile=True))
-				del expert_model_to_test
-				del transformed_image
-
-				_,class_associated_to_each_Crop = torch.max(outs,1)
-
-				del _
-				del outs
-
-				class_associated_to_each_Crop = class_associated_to_each_Crop.data.cpu().numpy()
-				unique,counts = np.unique(class_associated_to_each_Crop,return_counts=True)
-				del class_associated_to_each_Crop
-
-				if unique[np.argmax(counts)] ==0:    ### first max over
-					image_pred =3
-				else :
-					image_pred =4
-
-				del unique
-				del counts
-
-				expert_prediction.append(image_pred)
-
-			expert_prediction = np.array(expert_prediction)
-			unique,counts = np.unique(expert_prediction,return_counts=True)
-
-			final_prediction = unique[np.argmax(counts)]
-			del unique
-			del counts
-			del expert_prediction
-		
-
-		else: 
-			final_prediction = primay_prediction
-
-
-		if final_prediction == class_of_interest:
-			cntr= cntr+1
-		if final_prediction == 0:
-			zeros=zeros+1
-		if final_prediction == 1:
-			ones=ones+1		
-		if final_prediction == 2:
-			twos=twos+1
-		if final_prediction == 3:
-			threes=threes+1
-		if final_prediction == 4:
-			fours=fours+1
-		print
-		# print (final_prediction)
-
-		# del transformed_image
-
-
-print (cntr)
+print (conf_mat)
 
 print (zeros,ones,twos,threes,fours)
