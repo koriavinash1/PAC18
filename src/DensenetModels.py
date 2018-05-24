@@ -15,7 +15,7 @@ class _DenseLayer(nn.Sequential):
         self.add_module('norm2', nn.BatchNorm3d(bn_size * growth_rate)),
         self.add_module('relu2', nn.ReLU(inplace=True)),
         self.add_module('conv2', nn.Conv3d(bn_size * growth_rate, growth_rate,
-                        kernel_size=5, stride=1, padding=2, bias=False)),
+                        kernel_size=3, stride=1, padding = 1, bias=False)),
         self.drop_rate = drop_rate
 
     def forward(self, x):
@@ -39,10 +39,9 @@ class _Strider(nn.Sequential):
         self.add_module('norm', nn.BatchNorm3d(num_input_features))
         self.add_module('relu', nn.ReLU(inplace=True))
         self.add_module('conv', nn.Conv3d(num_input_features, num_output_features,
-                                          kernel_size=5, stride=1, bias=False)) ## reduce the size of the feature map
-        self.add_module('pool', nn.AvgPool3d(kernel_size=2, stride=2))        ## removed the average pooling layer. 
-
-
+                                        kernel_size=3, stride=1, bias=False)) ## reduce the size of the feature map
+        self.add_module('pool', nn.Conv3d(num_output_features, num_output_features,
+                                        kernel_size=2, stride=2))        ## removed the average pooling layer.
 
 
 # class OutputTransition(nn.Module):   ##### original vnet implementation
@@ -75,20 +74,21 @@ class OutputTransition(nn.Module):
         super(OutputTransition, self).__init__()
         self.bn1 = nn.BatchNorm3d(inChans)
         self.relu1 = nn.ReLU(inplace=True)
-        self.conv1 = nn.Conv3d(inChans, 4, kernel_size=5)
+        self.conv1 = nn.Conv3d(inChans, out_number, kernel_size=5)
         self.conv3 = nn.Conv3d(4, out_number, kernel_size=2)
 
 
     def forward(self, x):
         out = self.conv1(self.relu1(self.bn1(x)))
-        out = self.conv3(self.relu1(out))
+        # out = self.conv3(self.relu1(out))
+        # print (out)
         return out
 
 class PhenotypeLayer(nn.Module):
     """docstring for PhenotypeLayer"""
     def __init__(self):
         super(PhenotypeLayer, self).__init__()
-        self.layer1_c = nn.Linear(10, 32)
+        self.layer1_c = nn.Linear(80, 32)
         self.layer1_a = nn.Linear(1, 32)
         self.layer1_t = nn.Linear(1, 32)
         self.layer2 = nn.Linear(32, 2)
@@ -112,19 +112,19 @@ class DenseNet3D(nn.Module):
         bn_size (int) - multiplicative factor for number of bottle neck layers
           (i.e. bn_size * k features in the bottleneck layer)
         drop_rate (float) - dropout rate after each dense layer
-        out_number (int) - number of classification classes
+        out_number (int) - number of classification classe
     """
-    def __init__(self, growth_rate=8, block_config=(2, 3, 4, 3, 2),
-                 num_init_features=6, bn_size=2, drop_rate=0.2, out_number=10):
+    def __init__(self, growth_rate=4, block_config=(1, 2, 3),
+             num_init_features=8, bn_size=4, drop_rate=0.2, out_number=10):
 
         super(DenseNet3D, self).__init__()
 
         # First convolution
         self.features = nn.Sequential(OrderedDict([
-            ('conv0', nn.Conv3d(1, num_init_features, kernel_size=5, stride=1, padding=2, bias=False)),
+            ('conv0', nn.Conv3d(1, num_init_features, kernel_size=3, stride=1, padding=2, bias=False)),
             ('norm0', nn.BatchNorm3d(num_init_features)),
             ('relu0', nn.ReLU(inplace=True)),
-            ('pool0', nn.AvgPool3d(kernel_size=3, stride=2, padding=1)),# Average Pooling layer 
+            ('pool0', nn.AvgPool3d(kernel_size=3, stride=2, padding=1)),# Average Pooling layer
         ]))
 
         # Each denseblock
@@ -157,10 +157,15 @@ class DenseNet3D(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x, age, tiv):
+        # print ("DATA: ", x.size())
         features = self.features(x)
+        # print ("features: ", features.size())
         out = F.relu(features, inplace=True)
-        #out = F.avg_pool2d(out, kernel_size=7, stride=1).view(features.size(0), -1)
-        out = self.classifier(out).view(out.size(0), -1)
-        out = PhenotypeLayer()(out, age, tiv)
+        out = self.classifier(out)
+        # print ("classifier: ", out.size())
+        out = out.view(out.size(0), -1)
+        # print ("linear: ", out.size())
+        out = PhenotypeLayer().cuda()(out, age, tiv)
+        # print ("phType: ", out.size())
         out = F.softmax(out)
         return out

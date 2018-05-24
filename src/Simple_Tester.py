@@ -4,36 +4,37 @@ import h5py
 from torchvision import transforms
 from PIL import Image
 from torch.autograd import Variable
+from DataAugment import DataAugment
 import numpy as np
 import pandas as pd
-
+augment = DataAugment()
 zeros=0
 ones =0
-transform = {'MinMax': True, 'Resize': 82, 'TenCrop': 64}
+transform = {'MinMax': True, 'ZScore' : True, 'Resize': 82, 'TenCrop': 64}
 
-s1_data = pd.read_csv('../')
-s23_data = pd.read_csv('../')
-info = pd.read_csv('../')# PAC_info_sheet.csv
+s1_data = pd.read_csv("/home/uavws/Documents/avinash/PAC18/processed_data/scanner_1.csv")
+s23_data = pd.read_csv("/home/uavws/Documents/avinash/PAC18/processed_data/scanner_2_3.csv")
+info = pd.read_csv('/home/uavws/Documents/avinash/PAC18/raw_data/PAC_info_sheet.csv')# PAC_info_sheet.csv
 
-fiels = []
-files.extend(s1_data[s1_data['Testing']]['Volume_Path'])
-files.extend(s23_data[s23_data['Testing']]['Volume_Path'])
+files = []
+files.extend(s1_data[s1_data['Training']]['Volume_Path'])
+files.extend(s23_data[s23_data['Training']]['Volume_Path'])
 
 class_of_interest = [0,1]
 
-scanner_1_model = torch.load('../xyz')
-scanner_23_model = torch.load('../xyz')
+scanner_1_model = torch.load("/home/uavws/Documents/avinash/PAC18/models4/model-m-09052018-184328-densenet3D_scanner_1_loss = tensor(0.6248, device='cuda:0') accuracy = 0.669354838709677.pth.tar")
+scanner_23_model = torch.load("/home/uavws/Documents/avinash/PAC18/models4/model-m-09052018-190544-densenet3D_scanner_2_3_loss = tensor(0.6887, device='cuda:0') accuracy = 0.6148648648648649.pth.tar")
 
 cntr =0
 total_number_of_files=0
 
-predictions, gts =[], []
+pred, gts =[], []
 
 for f in files:
-
+		# f = f[:-4] + '.hdf5'
 		id_ = f.split('/').pop().split('.')[0]
 		h5 = h5py.File(f,'r')
-		vol = h5['volume'][:]
+		numpy_image = h5['volume'][:]
 		age = h5['age'][:]/100.0 # normalizing values
 		tiv = h5['tiv'][:]/3000.0 # normalizing values
 		label = h5['label'][:]
@@ -64,15 +65,16 @@ for f in files:
 		except: pass
 
 		if len(numpy_image.shape) == 3:
-			imageData = Variable(torch.from_numpy(np.expand_dims(numpy_image, 0)), volatile=True)
-		else: imageData = Variable(torch.from_numpy(np.expand_dims(numpy_image, 1)), volatile=True)
+			imageData = Variable(torch.from_numpy(np.expand_dims(np.expand_dims(numpy_image, 0), 0)).cuda(), volatile=True)
+		else: imageData = Variable(torch.from_numpy(np.expand_dims(numpy_image, 1)).cuda(), volatile=True)
 
-		imageAge = Variable(torch.FloatTensor(age), volatile=True)
-		imageTiv = Variable(torch.FloatTensor(tiv),volatile=True)
+		imageAge = Variable(torch.FloatTensor(age).cuda(), volatile=True)
+		imageTiv = Variable(torch.FloatTensor(tiv).cuda(),volatile=True)
 
+		print(imageData.size())
 
 		# prediction code
-		gts.append(label)
+		gts.append(int(label[0] -1))
 		if scanner == 1:
 			outs = scanner_1_model(imageData, imageAge, imageTiv)
 		else:
@@ -91,14 +93,14 @@ for f in files:
 		del unique
 		del counts
 
-		predictions.append(image_pred)
+		pred.append(image_pred)
 
-conf_mat = [[0, 0], [0, 0]]
-conf_mat[0,0] = np.sum((predictions == 0 and gts == 0))
-conf_mat[1,1] = np.sum((predictions == 1 and gts == 1))
-conf_mat[0,1] = np.sum((predictions == 0 and gts == 1))
-conf_mat[1,0] = np.sum((predictions == 1 and gts == 0))
+pred = np.array(pred)
+gts = np.array(gts)
+conf_mat = np.array([[0, 0], [0, 0]])
+conf_mat[0,0] = np.sum(((pred == 0) * (gts == 0)))
+conf_mat[1,1] = np.sum(((pred == 1) * (gts == 1)))
+conf_mat[0,1] = np.sum(((pred == 0) * (gts == 1)))
+conf_mat[1,0] = np.sum(((pred == 1) * (gts == 0)))
 
 print (conf_mat)
-
-print (zeros,ones,twos,threes,fours)

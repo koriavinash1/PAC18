@@ -133,8 +133,8 @@ class DatasetGenerator(Dataset):
 
 		# sanity check...
 		print (len(self.listImagePaths))
-		self.listImagePaths = self.listImagePaths[:50]
-		# self.listImageLabels = self.listImageLabels[:50]
+		# self.listImagePaths = self.listImagePaths[:50]
+		# # self.listImageLabels = self.listImageLabels[:50]
 
 	def __getitem__(self, index):
 		"""
@@ -151,6 +151,11 @@ class DatasetGenerator(Dataset):
 		try:
 			minmax = self.transform['MinMax']
 			numpy_image = augment.MinMaxNormalization(numpy_image)
+		except: pass
+
+		try:
+			minmax = self.transform['ZScore']
+			numpy_image = augment.ZScore(numpy_image)
 		except: pass
 
 		try:

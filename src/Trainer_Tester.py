@@ -48,14 +48,15 @@ class Trainer ():
 
 		
 		#-------------------- SETTINGS: NETWORK ARCHITECTURE
-		model = nnArchitecture['model']
+		model = nnArchitecture['model'].cuda()
 		
-		# model = torch.nn.DataParallel(model)
+		# model = torch.nn.DataParallel(model.cuda())
 				
 		#-------------------- SETTINGS: DATA TRANSFORMS
 		
 		transformList = {}
 		transformList['MinMax'] = True
+		transformList['ZScore'] = True
 		transformList['Resize'] = imgtransResize
 		transformList['RandomResizedCrop'] = imgtransCrop
 		transformList['Sequence'] = True
@@ -69,7 +70,7 @@ class Trainer ():
 		
 		# print len(dataLoaderTrain), len(datasetTrain)
 		#-------------------- SETTINGS: OPTIMIZER & SCHEDULER
-		optimizer = optim.Adam (model.parameters(), lr=1e-3, betas=(0.9, 0.999), eps=1e-05, weight_decay=1e-5)
+		optimizer = optim.Adam (model.parameters(), lr=1e-4, betas=(0.9, 0.999), eps=1e-05, weight_decay=1e-5)
 		scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
 				
 		#-------------------- SETTINGS: LOSS
@@ -112,7 +113,7 @@ class Trainer ():
 				archs.append(nnArchitecture['name'])
 				losses.append(lossMIN)
 				accs.append(acc)
-				model_name = '../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + 'loss = ' + str(lossVal) + ' accuracy = ' + str(acc)+ '.pth.tar'
+				model_name = '../models/model-m-' + launchTimestamp + "-" + nnArchitecture['name'] + '_loss = ' + str(lossVal) + ' accuracy = ' + str(acc)+ '.pth.tar'
 
 				torch.save(model, model_name)
 				print ('Epoch [' + str(epochID + 1) + '] [save] [' + launchTimestamp + '] loss= ' + str(lossVal) + ' accuracy= ' + str(acc))
@@ -145,18 +146,29 @@ class Trainer ():
 		model.train()
 		for batchID, (input, target, age, tiv, _) in tqdm(enumerate (dataLoader)):
 			# print 		
-			target = target.cpu()
+			target = target.cuda()
 			
-			varInput = torch.autograd.Variable(input.cpu())
-			varAge = torch.autograd.Variable(age)  
-			varTiv = torch.autograd.Variable(tiv)  
-			varTarget = torch.autograd.Variable(target)
+			varInput = torch.autograd.Variable(input.cuda(), volatile=True)
+			varAge = torch.autograd.Variable(age.cuda())  
+			varTiv = torch.autograd.Variable(tiv.cuda())  
+			varTarget = torch.autograd.Variable(target.cuda())
 
 			varOutput = model(varInput, varAge, varTiv)
 
 			# print varInput.size(), varOutput.size(), target.size()
 			# varOutput = torch.FloatTensor([0])
-			lossvalue = loss(varOutput, varTarget)	   
+
+			# lossfn = loss(weights = weights)
+			lossvalue = loss(varOutput, varTarget)	
+			l2_reg = None
+			for W in model.parameters():
+			    if l2_reg is None:
+			        l2_reg = W.norm(2)
+			    else:
+			        l2_reg = l2_reg + W.norm(2)
+
+			lossvalue = lossvalue + l2_reg * 1e-3
+			# batch_loss.backward()   
 			optimizer.zero_grad()
 			lossvalue.backward()
 			optimizer.step()
@@ -176,12 +188,12 @@ class Trainer ():
 		acc = 0.0
 		for i, (input, target, age, tiv,_) in enumerate (dataLoader):
 			
-			target = target.cpu()
+			target = target.cuda()
 				 
-			varInput = torch.autograd.Variable(input.cpu(), volatile=True)
-			varAge = torch.autograd.Variable(age, volatile=True)  
-			varTiv = torch.autograd.Variable(tiv, volatile=True)  
-			varTarget = torch.autograd.Variable(target, volatile=True)        
+			varInput = torch.autograd.Variable(input.cuda(), volatile=True)
+			varAge = torch.autograd.Variable(age.cuda(), volatile=True)  
+			varTiv = torch.autograd.Variable(tiv.cuda(), volatile=True)  
+			varTarget = torch.autograd.Variable(target.cuda(), volatile=True)        
 			varOutput = model(varInput, varAge, varTiv)
 			
 			acc += self.accuracy(varOutput, varTarget)/ (len(dataLoader)*trBatchSize)
@@ -231,7 +243,7 @@ class Tester():
 		return path
 	
 	def accuracy(self, output, labels):
-		print output, labels
+		print (output, labels)
 		acc = float(np.sum(output == labels))/len(labels)
 		return acc
 
