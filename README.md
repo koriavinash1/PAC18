@@ -41,6 +41,12 @@ sMRI based depression classification
 
 + Use ./src/main.py to train/test model
 
+
+## Contact 
+
+* Avinash Kori (avinashgkori@smail.iitm.ac.in)
+
+
 <hr>
 
 If any comments or issues, pull requests/issues are **Welcomed....**
